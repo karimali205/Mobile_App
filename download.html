@@ -786,7 +786,7 @@
         <section class="action-area">
 
             <!-- Android APK Download Button (Crimson Primary) -->
-            <a href="rafiq-almuslim.apk" download="rafiq-almuslim.apk" class="btn-card android-btn" id="btnAndroid">
+            <a href="rafiq-almuslim.apk" download="rafiq-almuslim.apk" onclick="recordDownloadEvent('تحميل APK للأندرويد')" class="btn-card android-btn" id="btnAndroid">
                 <div class="detected-badge" id="androidBadge"><i class="fa-brands fa-android"></i> متوافق مع هاتفك</div>
                 <div class="btn-left">
                     <div class="btn-icon-box">
@@ -803,7 +803,7 @@
             </a>
 
             <!-- iOS (iPhone / iPad) Install Button (Crisp White & Crimson) -->
-            <div class="btn-card ios-btn" id="btnIOS" onclick="openIOSModal()">
+            <div class="btn-card ios-btn" id="btnIOS" onclick="openIOSModal(); recordDownloadEvent('تثبيت للآيفون iOS');">
                 <div class="detected-badge" id="iosBadge"><i class="fa-brands fa-apple"></i> جهازك آيفون</div>
                 <div class="btn-left">
                     <div class="btn-icon-box">
@@ -820,7 +820,7 @@
             </div>
 
             <!-- Web Instant Access -->
-            <a href="index.html" class="btn-card web-btn" id="btnWeb">
+            <a href="index.html" onclick="recordDownloadEvent('تصفح مباشر عبر الويب')" class="btn-card web-btn" id="btnWeb">
                 <div class="btn-left">
                     <div class="btn-icon-box">
                         <i class="fa-solid fa-globe"></i>
@@ -936,6 +936,36 @@
     <div class="toast" id="toast">تم النسخ بنجاح</div>
 
     <script>
+        // رابط تسجيل الإحصائيات (Google Sheet Webhook)
+        const TRACKING_URL = 'https://script.google.com/macros/s/AKfycbwLd2Pz4uSJk7wQ6g5QFUPB3io0ZRyAz_hfMQvljSXoaHrlLAyAYacfHYdh1MPmbilM/exec';
+
+        function recordDownloadEvent(eventType) {
+            const ua = navigator.userAgent;
+            let device = 'كمبيوتر أو متصفح';
+            if (/android/i.test(ua)) device = 'Android Phone';
+            else if (/iPad|iPhone|iPod/.test(ua)) device = 'iPhone / iPad';
+
+            const payload = {
+                event: eventType,
+                device: device,
+                date: new Date().toLocaleDateString('ar-EG'),
+                time: new Date().toLocaleTimeString('ar-EG'),
+                referrer: document.referrer || 'مباشر (لينكد إن / فيسبوك)',
+                screen: `${window.screen.width}x${window.screen.height}`
+            };
+
+            if (TRACKING_URL && TRACKING_URL.startsWith('http')) {
+                try {
+                    fetch(TRACKING_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } catch(e) {}
+            }
+        }
+
         // Automatic Device Detection
         document.addEventListener('DOMContentLoaded', () => {
             const ua = navigator.userAgent || navigator.vendor || window.opera;
