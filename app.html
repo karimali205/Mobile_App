@@ -209,15 +209,17 @@ body {
       </div>
     </div>
 
-    <!-- زر التثبيت السريع ومغير الثيمات -->
+    <!-- مغير الثيمات الأنيق كقائمة منسدلة بالأسماء -->
     <div class="flex items-center gap-2">
-      <button id="pwaHeaderInstallBtn" onclick="triggerPWAInstall()" hidden class="pill text-xs py-1.5 px-3 border-rose-500 text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1.5 shadow-sm">
-        <i class="fa-solid fa-download"></i> تثبيت
-      </button>
-
-      <!-- مغير الثيمات الأربعة -->
-      <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-full border" style="border-color: var(--border-color)" id="themeSwitchers">
-        <!-- Generated via JS -->
+      <div class="relative flex items-center">
+        <i class="fa-solid fa-palette text-xs absolute right-3 pointer-events-none" style="color: var(--accent);"></i>
+        <select id="themeSelect" onchange="applyTheme(this.value)" class="text-xs font-bold py-2 pr-8 pl-6 rounded-2xl border cursor-pointer transition shadow-xs appearance-none focus:outline-none" style="background-color: var(--bg-card); color: var(--text-primary); border-color: var(--border-color);">
+          <option value="crimson">🔴 الأحمر والأبيض</option>
+          <option value="gold">🟡 الأبيض والذهبي</option>
+          <option value="emerald">🟢 الأخضر الإسلامي</option>
+          <option value="night">🌙 الوضع الليلي</option>
+        </select>
+        <i class="fa-solid fa-chevron-down text-[10px] absolute left-2.5 pointer-events-none" style="color: var(--text-muted);"></i>
       </div>
     </div>
   </div>
@@ -409,10 +411,9 @@ body {
 
   <!-- الفوتر الموحد لجميع الصفحات -->
   <footer class="mt-12 mb-6 text-center">
-    <button onclick="openAboutModal()" class="inline-flex items-center gap-2 text-sm font-bold py-2.5 px-5 rounded-2xl shadow-sm border transition-all hover:scale-105 active:scale-95" style="color: var(--text-primary); background-color: var(--bg-card); border-color: var(--border-color);">
-      <span class="text-xs font-medium" style="color: var(--text-muted)">Created By:</span>
+    <button onclick="openAboutModal()" class="inline-flex items-center gap-2 text-xs sm:text-sm font-bold py-2.5 px-6 rounded-2xl shadow-sm border transition-all hover:scale-105 active:scale-95" style="color: var(--text-primary); background-color: var(--bg-card); border-color: var(--border-color);">
+      <span class="font-medium" style="color: var(--text-muted)">Created By:</span>
       <span class="font-extrabold underline decoration-2 underline-offset-4" style="color: var(--accent); text-decoration-color: var(--accent)">Karim Ali</span>
-      <span class="text-xs py-0.5 px-2 rounded-full font-bold text-white shadow-xs" style="background: var(--accent)">Data Scientist & AI Developer</span>
     </button>
   </footer>
 </main>
@@ -557,29 +558,31 @@ function copyText(txt) {
 }
 
 /* ==========================================================================
-   1. نظام الثيمات الأربعة المحددة بالبرومبت
+   1. نظام الثيمات الأربعة المحددة بالبرومبت (Dropdown List)
    ========================================================================== */
 const THEMES = [
-  { id: 'crimson', name: 'الأحمر والأبيض المميز', color: '#C81E51' },
-  { id: 'gold', name: 'الأبيض والذهبي الاحترافي', color: '#C59B27' },
-  { id: 'emerald', name: 'الأخضر الإسلامي العصري', color: '#059669' },
-  { id: 'night', name: 'الوضع الليلي الفاخر', color: '#0F172A' }
+  { id: 'crimson', name: '🔴 الأحمر والأبيض', color: '#C81E51' },
+  { id: 'gold', name: '🟡 الأبيض والذهبي', color: '#C59B27' },
+  { id: 'emerald', name: '🟢 الأخضر الإسلامي', color: '#059669' },
+  { id: 'night', name: '🌙 الوضع الليلي', color: '#0F172A' }
 ];
 
 function applyTheme(themeId) {
   document.documentElement.setAttribute('data-theme', themeId);
   sv('theme', themeId);
-  $$('.theme-pill').forEach(btn => {
-    btn.classList.toggle('ring-2', btn.dataset.theme === themeId);
-    btn.classList.toggle('ring-offset-2', btn.dataset.theme === themeId);
-  });
+  const select = $('#themeSelect');
+  if (select && select.value !== themeId) {
+    select.value = themeId;
+  }
 }
 
 function initThemes() {
-  const container = $('#themeSwitchers');
-  container.innerHTML = THEMES.map(t => `
-    <button data-theme="${t.id}" onclick="applyTheme('${t.id}')" title="${t.name}" class="theme-pill w-6 h-6 rounded-full border border-black/10 transition-all hover:scale-110" style="background-color: ${t.color}"></button>
-  `).join('');
+  const select = $('#themeSelect');
+  if (select) {
+    select.innerHTML = THEMES.map(t => `
+      <option value="${t.id}">${t.name}</option>
+    `).join('');
+  }
   const saved = ls('theme', 'crimson');
   applyTheme(saved);
 }
@@ -2653,15 +2656,13 @@ function openAboutModal() {
         <i class="fa-solid fa-xmark text-sm"></i>
       </button>
 
-      <!-- رأس البطاقة: الصورة الرمزية والاسم -->
-      <div class="flex items-center gap-4 mb-5 pt-1">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-md shrink-0" style="background: linear-gradient(135deg, #C81E51, #881337);">
+      <!-- رأس البطاقة: الصورة الرمزية والاسم في المنتصف وتحته المسمى الوظيفي -->
+      <div class="text-center mb-6 pt-1">
+        <div class="w-16 h-16 rounded-2xl mx-auto mb-3 flex items-center justify-center text-white font-black text-2xl shadow-md" style="background: linear-gradient(135deg, #C81E51, #881337);">
           KA
         </div>
-        <div>
-          <h3 class="font-black text-xl text-slate-900" style="color: #0F172A;">Karim Ali</h3>
-          <p class="text-xs font-extrabold tracking-wide text-rose-700" style="color: #C81E51;">Data Scientist & AI Developer</p>
-        </div>
+        <h3 class="font-black text-2xl tracking-tight" style="color: #0F172A;">Karim Ali</h3>
+        <p class="text-xs sm:text-sm font-extrabold tracking-wide mt-1" style="color: #C81E51;">Data Scientist & AI Developer</p>
       </div>
 
       <!-- قائمة التواصل مع أزرار النسخ عالية التباين -->
@@ -2713,7 +2714,7 @@ function openAboutModal() {
           تطبيق إسلامي شامل للعبادة والذكر اليومي، يضم مواقيت الصلاة والأذان التفاعلي، القرآن الكريم، أذكار الصباح والمساء، التلاوات الصوتية، والسبحة.
         </p>
         <div class="p-3 rounded-xl border-2 border-dashed font-bold leading-relaxed text-center shadow-xs" style="border-color: #C81E51; background: #FFF1F2; color: #881337;">
-          🤲 <span class="font-black text-slate-950" style="color: #4C0519;">صدقة جارية</span> على أرواح مواتانا وموتى المسلمين جميعاً، فنسألكم خالص الدعاء لهم بالرحمة والمغفرة وقراءة الفاتحة.
+          🤲 <span class="font-black text-slate-950" style="color: #4C0519;">صدقة جارية</span> على أرواح مواتنا وموتى المسلمين جميعاً، فنسألكم خالص الدعاء لهم بالرحمة والمغفرة وقراءة الفاتحة.
         </div>
       </div>
     </div>
