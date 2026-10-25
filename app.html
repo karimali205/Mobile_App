@@ -408,10 +408,11 @@ body {
   </section>
 
   <!-- الفوتر الموحد لجميع الصفحات -->
-  <footer class="mt-10 mb-4 text-center">
-    <button onclick="openAboutModal()" class="inline-flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-xl transition hover:opacity-80" style="color: var(--text-muted)">
-      <span>Created By:</span>
-      <span class="font-bold underline decoration-2 underline-offset-4" style="color: var(--accent); text-decoration-color: var(--accent)">Karim Ali</span>
+  <footer class="mt-12 mb-6 text-center">
+    <button onclick="openAboutModal()" class="inline-flex items-center gap-2 text-sm font-bold py-2.5 px-5 rounded-2xl shadow-sm border transition-all hover:scale-105 active:scale-95" style="color: var(--text-primary); background-color: var(--bg-card); border-color: var(--border-color);">
+      <span class="text-xs font-medium" style="color: var(--text-muted)">Created By:</span>
+      <span class="font-extrabold underline decoration-2 underline-offset-4" style="color: var(--accent); text-decoration-color: var(--accent)">Karim Ali</span>
+      <span class="text-xs py-0.5 px-2 rounded-full font-bold text-white shadow-xs" style="background: var(--accent)">Data Scientist & AI Developer</span>
     </button>
   </footer>
 </main>
@@ -2642,77 +2643,77 @@ if ('serviceWorker' in navigator) {
 /* نافذة المطور وعن التطبيق (About & Developer Modal) */
 function openAboutModal() {
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
   modal.innerHTML = `
-    <div class="card p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto shadow-2xl relative text-right" dir="rtl" style="background-color: var(--bg-card); border-color: var(--border-color);">
+    <div class="card p-7 max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl relative text-right rounded-3xl border-2" dir="rtl" style="background-color: #FFFFFF; border-color: #FECDD3;">
       <!-- زر الإغلاق -->
-      <button onclick="this.closest('.fixed').remove()" class="absolute left-4 top-4 pill !p-1.5 text-xs" title="إغلاق">
-        <i class="fa-solid fa-xmark"></i>
+      <button onclick="this.closest('.fixed').remove()" class="absolute left-4 top-4 w-8 h-8 rounded-full flex items-center justify-center text-slate-700 hover:text-black bg-slate-100 hover:bg-slate-200 transition" title="إغلاق">
+        <i class="fa-solid fa-xmark text-sm"></i>
       </button>
 
       <!-- رأس البطاقة: الصورة الرمزية والاسم -->
-      <div class="flex items-center gap-3.5 mb-4 pt-1">
-        <div class="w-14 h-14 rounded-full flex items-center justify-center text-white font-extrabold text-xl shadow-md shrink-0" style="background: var(--accent);">
+      <div class="flex items-center gap-4 mb-5 pt-1">
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-md shrink-0" style="background: linear-gradient(135deg, #C81E51, #881337);">
           KA
         </div>
         <div>
-          <h3 class="font-black text-lg" style="color: var(--text-primary)">Karim Ali</h3>
-          <p class="text-xs font-semibold" style="color: var(--accent)">مهندس برمجيات</p>
+          <h3 class="font-black text-xl text-slate-900" style="color: #0F172A;">Karim Ali</h3>
+          <p class="text-xs font-extrabold tracking-wide text-rose-700" style="color: #C81E51;">Data Scientist & AI Developer</p>
         </div>
       </div>
 
-      <!-- قائمة التواصل مع أزرار النسخ -->
-      <div class="space-y-2 mb-4 text-xs font-mono" dir="ltr">
-        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2" style="border-color: var(--border-color); background: var(--accent-soft)">
-          <div class="flex items-center gap-2 truncate text-slate-800 dark:text-slate-200">
-            <i class="fa-regular fa-envelope text-sm" style="color: var(--accent)"></i>
-            <span class="truncate font-sans">karimali12qw@gmail.com</span>
+      <!-- قائمة التواصل مع أزرار النسخ عالية التباين -->
+      <div class="space-y-2.5 mb-5 text-xs font-mono" dir="ltr">
+        <div class="p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-xs" style="border-color: #FECDD3; background: #FFF1F2;">
+          <div class="flex items-center gap-2.5 truncate">
+            <i class="fa-regular fa-envelope text-base" style="color: #C81E51;"></i>
+            <span class="truncate font-sans font-bold text-slate-900" style="color: #0F172A !important;">karimali12qw@gmail.com</span>
           </div>
-          <button onclick="copyText('karimali12qw@gmail.com')" class="pill text-xs py-1 px-2.5 shrink-0">
+          <button onclick="copyText('karimali12qw@gmail.com')" class="px-3 py-1.5 rounded-xl font-bold text-xs text-white shrink-0 shadow-sm transition hover:opacity-90" style="background: #0F172A;">
             Copy
           </button>
         </div>
 
-        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2" style="border-color: var(--border-color); background: var(--accent-soft)">
-          <div class="flex items-center gap-2 truncate text-slate-800 dark:text-slate-200">
-            <i class="fa-solid fa-phone text-sm text-emerald-500"></i>
-            <span class="truncate font-sans">01116009359</span>
+        <div class="p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-xs" style="border-color: #FECDD3; background: #FFF1F2;">
+          <div class="flex items-center gap-2.5 truncate">
+            <i class="fa-solid fa-phone text-base" style="color: #C81E51;"></i>
+            <span class="truncate font-sans font-bold text-slate-900" style="color: #0F172A !important;">01116009359</span>
           </div>
-          <button onclick="copyText('01116009359')" class="pill text-xs py-1 px-2.5 shrink-0">
+          <button onclick="copyText('01116009359')" class="px-3 py-1.5 rounded-xl font-bold text-xs text-white shrink-0 shadow-sm transition hover:opacity-90" style="background: #0F172A;">
             Copy
           </button>
         </div>
 
-        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2" style="border-color: var(--border-color); background: var(--accent-soft)">
-          <div class="flex items-center gap-2 truncate text-slate-800 dark:text-slate-200">
-            <i class="fa-brands fa-linkedin text-sm text-blue-500"></i>
-            <span class="truncate font-sans">LinkedIn: Karim Ali</span>
+        <div class="p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-xs" style="border-color: #FECDD3; background: #FFF1F2;">
+          <div class="flex items-center gap-2.5 truncate">
+            <i class="fa-brands fa-linkedin text-base text-blue-600"></i>
+            <span class="truncate font-sans font-bold text-slate-900" style="color: #0F172A !important;">LinkedIn: Karim Ali</span>
           </div>
-          <button onclick="copyText('Karim Ali')" class="pill text-xs py-1 px-2.5 shrink-0">
+          <button onclick="copyText('Karim Ali')" class="px-3 py-1.5 rounded-xl font-bold text-xs text-white shrink-0 shadow-sm transition hover:opacity-90" style="background: #0F172A;">
             Copy
           </button>
         </div>
       </div>
 
       <!-- زر إرسال ملاحظات -->
-      <a href="mailto:karimali12qw@gmail.com?subject=ملاحظات واقتراحات حول تطبيق رفيق المسلم" class="btn-accent w-full py-2.5 text-center text-xs font-bold mb-4 shadow-md flex items-center justify-center gap-2 rounded-xl">
-        <i class="fa-regular fa-paper-plane"></i>
+      <a href="mailto:karimali12qw@gmail.com?subject=ملاحظات واقتراحات حول تطبيق رفيق المسلم" class="w-full py-3 text-center text-xs font-extrabold mb-5 shadow-md flex items-center justify-center gap-2 rounded-2xl text-white transition hover:shadow-lg active:scale-95" style="background: linear-gradient(135deg, #C81E51 0%, #9F1239 100%);">
+        <i class="fa-regular fa-paper-plane text-sm"></i>
         <span>Send feedback (إرسال ملاحظات)</span>
       </a>
 
-      <!-- صندوق عن التطبيق والإهداء -->
-      <div class="p-3.5 rounded-xl border text-xs leading-relaxed space-y-2 text-justify" style="border-color: var(--border-color); background: color-mix(in srgb, var(--accent) 5%, var(--bg-card))">
-        <div class="font-bold flex items-center gap-1.5" style="color: var(--text-primary)">
-          <i class="fa-solid fa-circle-info" style="color: var(--accent)"></i>
+      <!-- صندوق عن التطبيق والإهداء (أحمر وأبيض وأسود بدون أي أصفر) -->
+      <div class="p-4 rounded-2xl border text-xs leading-relaxed space-y-2.5 text-justify shadow-xs" style="border-color: #E2E8F0; background: #F8FAFC;">
+        <div class="font-extrabold flex items-center gap-1.5 text-slate-900" style="color: #0F172A;">
+          <i class="fa-solid fa-circle-info" style="color: #C81E51;"></i>
           <span>عن تطبيق رفيق المسلم:</span>
         </div>
-        <p style="color: var(--text-muted)">
+        <p class="font-medium" style="color: #334155;">
           تطبيق إسلامي شامل للعبادة والذكر اليومي، يضم مواقيت الصلاة والأذان التفاعلي، القرآن الكريم، أذكار الصباح والمساء، التلاوات الصوتية، والسبحة.
         </p>
-        <div class="p-2.5 rounded-lg border border-amber-300/50 bg-amber-500/10 text-amber-900 dark:text-amber-200 font-semibold leading-relaxed text-center">
-          🤲 <b>صدقة جارية</b> على أرواح مواتانا وموتى المسلمين جميعاً، فنسألكم خالص الدعاء لهم بالرحمة والمغفرة وقراءة الفاتحة.
+        <div class="p-3 rounded-xl border-2 border-dashed font-bold leading-relaxed text-center shadow-xs" style="border-color: #C81E51; background: #FFF1F2; color: #881337;">
+          🤲 <span class="font-black text-slate-950" style="color: #4C0519;">صدقة جارية</span> على أرواح مواتانا وموتى المسلمين جميعاً، فنسألكم خالص الدعاء لهم بالرحمة والمغفرة وقراءة الفاتحة.
         </div>
       </div>
     </div>
