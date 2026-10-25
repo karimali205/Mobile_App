@@ -9,10 +9,13 @@
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#C81E51" id="metaThemeColor">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="رفيق المسلم">
-<link rel="apple-touch-icon" href="./icons/icon.svg">
-<link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="icon" type="image/svg+xml" href="./icon.svg">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -238,7 +241,7 @@ body {
         <button onclick="triggerPWAInstall()" class="btn-accent text-xs py-1.5 px-3 shadow-md">
           تثبيت الآن
         </button>
-        <button onclick="$('#pwaInstallBanner').remove()" class="pill !p-1.5 text-xs">
+        <button onclick="dismissInstallBanner()" class="pill !p-1.5 text-xs" title="إغلاق">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
@@ -2385,42 +2388,85 @@ function mobileNavClick(tab) {
   else if (tab === 'audio') openAudioModule();
 }
 
+// فحص هل التطبيق يعمل كـ App مثبت مستقل بالفعل
+function isAppInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true ||
+         document.referrer.includes('android-app://') ||
+         ls('app_installed', false);
+}
+
+// إخفاء فوري لأي رسائل تثبيت إذا كان التطبيق مثبتاً أو تم إغلاقها سابقاً
+function checkAndHideInstallPrompts() {
+  if (isAppInstalled() || ls('install_banner_dismissed', false)) {
+    $('#pwaInstallBanner')?.remove();
+    if (isAppInstalled()) $('#pwaHeaderInstallBtn')?.remove();
+  }
+}
+
 // دعم تثبيت تطبيق الويب التقدمي (PWA Install Prompt)
 let deferredPWAInstallPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
+  if (isAppInstalled()) return; // منع الظهور نهائياً إذا تم التثبيت مسبقاً
+  
   deferredPWAInstallPrompt = e;
   
-  const banner = $('#pwaInstallBanner');
+  if (!ls('install_banner_dismissed', false)) {
+    const banner = $('#pwaInstallBanner');
+    if (banner) banner.hidden = false;
+  }
   const headerBtn = $('#pwaHeaderInstallBtn');
-  if (banner) banner.hidden = false;
   if (headerBtn) headerBtn.hidden = false;
 });
+
+// حدث نجاح التثبيت من نظام التشغيل
+window.addEventListener('appinstalled', () => {
+  sv('app_installed', true);
+  $('#pwaInstallBanner')?.remove();
+  $('#pwaHeaderInstallBtn')?.remove();
+  showToast('تم تثبيت التطبيق بنجاح على هاتفك! 🌿', 'success');
+});
+
+function dismissInstallBanner() {
+  sv('install_banner_dismissed', true);
+  $('#pwaInstallBanner')?.remove();
+}
 
 function triggerPWAInstall() {
   if (deferredPWAInstallPrompt) {
     deferredPWAInstallPrompt.prompt();
     deferredPWAInstallPrompt.userChoice.then((choiceResult) => {
       if (choiceResult.outcome === 'accepted') {
-        showToast('شكراً لتثبيت تطبيق رفيق المسلم 🌿', 'success');
+        sv('app_installed', true);
         $('#pwaInstallBanner')?.remove();
         $('#pwaHeaderInstallBtn')?.remove();
+        showToast('جاري إضافة التطبيق لشاشتك الرئيسية 🌿', 'success');
       }
       deferredPWAInstallPrompt = null;
     });
   } else {
-    // إرشاد لمستخدمي آيفون / سفاري
-    showToast('للتثبيت على الآيفون: اضغط على زر المشاركة ⎋ ثم اختر (إضافة إلى الشاشة الرئيسية ➕)', 'info');
+    // إرشاد لمستخدمي آيفون وسفاري
+    showToast('للتثبيت على الآيفون: اضغط زر المشاركة ⎋ أسفل الشاشة، ثم اختر «إضافة إلى الشاشة الرئيسية ➕»', 'info');
   }
 }
 
-// تسجيل الـ Service Worker للعمل أوفلاين
+// تسجيل الـ Service Worker مع دعم التحديث التلقائي الفوري
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then((reg) => {
-      console.log('Service Worker Registered successfully', reg.scope);
+      // الاستماع لوجود تحديث جديد
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            showToast('🔄 تم تحديث التطبيق إلى نسخة جديدة! اضغط هنا للتحديث', 'info');
+            setTimeout(() => { window.location.reload(); }, 2500);
+          }
+        });
+      });
     }).catch((err) => {
-      console.log('Service Worker registration skipped or failed:', err);
+      console.log('Service Worker registration skipped:', err);
     });
   });
 }
@@ -2429,6 +2475,7 @@ if ('serviceWorker' in navigator) {
    بدء تشغيل التطبيق (Bootstrapping)
    ========================================================================== */
 window.addEventListener('DOMContentLoaded', () => {
+  checkAndHideInstallPrompts();
   initThemes();
   initCitiesDropdown();
   initQuickAdhkarBar();
