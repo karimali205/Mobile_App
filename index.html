@@ -383,6 +383,11 @@ body {
       </div>
     </div>
 
+    <!-- كارت تحدي اليوم الإيماني المبارك -->
+    <div id="dailyChallengeContainer" class="mb-6">
+      <!-- يتم توليده تلقائياً عبر renderDailyChallengeCard() -->
+    </div>
+
     <!-- شبكة الأقسام الرئيسية (7 وحدات + إضافات احترافية) -->
     <div class="mb-4">
       <h2 class="text-lg font-bold mb-3 flex items-center gap-2">
@@ -468,6 +473,10 @@ body {
     <i class="fa-solid fa-house text-lg"></i>
     <span class="text-[11px] font-bold">الرئيسية</span>
   </button>
+  <button onclick="mobileNavClick('tasks')" id="navBtn_tasks" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all" style="color:var(--text-muted)">
+    <i class="fa-solid fa-list-check text-lg"></i>
+    <span class="text-[11px] font-bold">مهامي</span>
+  </button>
   <button onclick="mobileNavClick('quran')" id="navBtn_quran" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all" style="color:var(--text-muted)">
     <i class="fa-solid fa-book-quran text-lg"></i>
     <span class="text-[11px] font-bold">القرآن</span>
@@ -479,10 +488,6 @@ body {
   <button onclick="mobileNavClick('tasbeeh')" id="navBtn_tasbeeh" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all" style="color:var(--text-muted)">
     <i class="fa-solid fa-circle-dot text-lg"></i>
     <span class="text-[11px] font-bold">السبحة</span>
-  </button>
-  <button onclick="mobileNavClick('audio')" id="navBtn_audio" class="flex flex-col items-center gap-0.5 py-1 px-3 rounded-xl transition-all" style="color:var(--text-muted)">
-    <i class="fa-solid fa-radio text-lg"></i>
-    <span class="text-[11px] font-bold">الإذاعات</span>
   </button>
 </nav>
 
@@ -2450,9 +2455,389 @@ function fetchRandomHadith() {
 }
 
 /* ==========================================================================
+   11.B. تحدي اليوم الإيماني المبارك (Daily Spiritual Challenge)
+   ========================================================================== */
+function getTodayDateStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+const DAILY_CHALLENGES = [
+  { id: 'salat_prophet', title: 'الصلاة على النبي ﷺ 100 مرة', desc: 'صلِّ على الحبيب المصطفى ﷺ مئة مرة لتنال شفاعته وتُكفى همك ويُغفر ذنبك.', cat: 'ذكر', icon: 'fa-heart' },
+  { id: 'sadaqah_sir', title: 'صدقة السر الخفية', desc: 'تصدق اليوم بأي مبلغ ولو بسيط في سرّ، أو اطعم مسكيناً أو طيراً ابتغاء مرضاة الله.', cat: 'إحسان', icon: 'fa-hand-holding-dollar' },
+  { id: 'duha_prayer', title: 'صلاة الضحى (ركعتان على الأقل)', desc: 'صلِّ ركعتي الضحى، فإنها صلاة الأوابين وتجزئ عن ٣٦٠ صدقة في جسدك.', cat: 'صلاة', icon: 'fa-sun' },
+  { id: 'silat_rahim', title: 'صلة الرحم ببر ومودة', desc: 'اتصل أو زر أحد أقاربك أو والديك وأدخل السرور والبركة على قلوبهم اليوم.', cat: 'بر', icon: 'fa-users' },
+  { id: 'istighfar_100', title: 'الاستغفار والتوبة 100 مرة', desc: 'ردد "أستغفر الله العظيم وأتوب إليه" مئة مرة بيقين وحضور قلب لتفريج الهموم.', cat: 'توبة', icon: 'fa-water' },
+  { id: 'surah_mulk', title: 'قراءة سورة الملك كاملة', desc: 'اقرأ سورة الملك كاملة قبل نومك، فإنها المانعة والمنجية بإذن الله من عذاب القبر.', cat: 'قرآن', icon: 'fa-book-open' },
+  { id: 'idkhal_surur', title: 'إدخال سرور على قلب مسلم', desc: 'انشر كلمة طيبة، ابتسم في وجه من تلقاه، أو فرّج كربة وسهّل أمراً على أخيك المسلم.', cat: 'خلق', icon: 'fa-face-smile' },
+  { id: 'dua_ghayb', title: 'دعاء لأخيك بظهر الغيب', desc: 'ادعُ لثلاثة من إخوانك أو مرضى المسلمين في سجودك دون أن يعلموا، ولك بمثل.', cat: 'دعاء', icon: 'fa-hands-praying' },
+  { id: 'kazm_ghayz', title: 'كظم الغيظ والعفو عن الناس', desc: 'سامح من أخطأ في حقك واعفُ عنه ابتغاء مرضاة الله ورجاء عفوه ومغفرته.', cat: 'تزكية', icon: 'fa-dove' },
+  { id: 'witr_prayer', title: 'صلاة ركعة الوتر قبل النوم', desc: 'لا تنم الليلة حتى توتر بركعة أو ثلاث ركعات، فإن الله وتر يحب الوتر.', cat: 'صلاة', icon: 'fa-moon' },
+  { id: 'it_am_taam', title: 'إطعام طعام أو سقي ماء', desc: 'ضع ماءً أو حباً للطيور، أو اشترِ ماءً بارداً لعامل في هذا اليوم المبارك.', cat: 'إحسان', icon: 'fa-bowl-food' },
+  { id: 'sayyid_istighfar', title: 'ترديد سيد الاستغفار بحضور قلب', desc: 'قل موقناً بها: "اللهم أنت ربي لا إله إلا أنت خلقتني وأنا عبدك وأنا على عهدك ووعدك ما استطعت..."', cat: 'ذكر', icon: 'fa-gem' },
+  { id: 'sajdat_shukr', title: 'سجدة شكر لله تعالى', desc: 'اسجد سجدة شكر لله متأملاً في نعمه التي لا تُحصى عليك في عافيتك وأهلك.', cat: 'شكر', icon: 'fa-person-praying' },
+  { id: 'tadabbur_ayah', title: 'حفظ آية وتدبرها وتطبيقها', desc: 'اختر آية جديدة من كتاب الله، تدبر معناها التفسيري، واعمل بما جاء فيها اليوم.', cat: 'قرآن', icon: 'fa-bookmark' },
+  { id: 'sunan_rawatib', title: 'السنن الرواتب كاملة (12 ركعة)', desc: 'حافظ اليوم على اثنتي عشرة ركعة سنة راتبة ليبني الله لك بيتاً في الجنة.', cat: 'صلاة', icon: 'fa-mosque' }
+];
+
+function getTodayChallenge() {
+  const today = getTodayDateStr();
+  const override = ls('challenge_override_' + today, null);
+  if (override !== null && DAILY_CHALLENGES[override]) {
+    return { ...DAILY_CHALLENGES[override], index: override };
+  }
+  let hash = 0;
+  for (let i = 0; i < today.length; i++) {
+    hash = (hash << 5) - hash + today.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % DAILY_CHALLENGES.length;
+  return { ...DAILY_CHALLENGES[idx], index: idx };
+}
+
+function renderDailyChallengeCard() {
+  const container = $('#dailyChallengeContainer');
+  if (!container) return;
+
+  const today = getTodayDateStr();
+  const ch = getTodayChallenge();
+  const isDone = ls('challenge_done_' + today, false);
+  const totalCompleted = ls('challenge_total_completed', 0);
+
+  container.innerHTML = `
+    <div class="card p-5 relative overflow-hidden transition-all duration-300 border-2" style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 7%, var(--bg-card)), var(--bg-card)); border-color: ${isDone ? 'var(--accent)' : 'color-mix(in srgb, var(--accent) 35%, var(--border-color))'};">
+      <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-black px-3 py-1 rounded-full text-white shadow-sm flex items-center gap-1.5" style="background: var(--accent);">
+            <i class="fa-solid fa-award"></i> تحدي اليوم الإيماني
+          </span>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-md" style="background: var(--accent-soft); color: var(--accent);">
+            #${ch.cat}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold flex items-center gap-1" style="color: var(--text-muted)">
+            <i class="fa-solid fa-fire text-amber-500"></i> ${toAr(totalCompleted)} تحدي منجز
+          </span>
+          <button onclick="cycleDailyChallenge()" class="pill text-xs p-1 px-2 flex items-center gap-1" title="اقتراح تحدٍ إيماني آخر">
+            <i class="fa-solid fa-arrows-rotate text-[10px]"></i> <span>بديل</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-3.5 my-3">
+        <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm transition" style="background: ${isDone ? 'var(--accent)' : 'var(--accent-soft)'}; color: ${isDone ? '#FFFFFF' : 'var(--accent)'};">
+          <i class="fa-solid ${isDone ? 'fa-check-double' : ch.icon}"></i>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-base sm:text-lg font-black ${isDone ? 'line-through opacity-80' : ''}" style="color: var(--text-primary)">
+            ${ch.title}
+          </h3>
+          <p class="text-xs sm:text-sm mt-1 leading-relaxed" style="color: var(--text-muted)">
+            ${ch.desc}
+          </p>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t flex items-center justify-between gap-3 flex-wrap" style="border-color: var(--border-color)">
+        <div class="text-xs font-semibold" style="color: var(--text-muted)">
+          ${isDone ? '🎉 تقبل الله طاعتك وبارك في عملك الصالح!' : '✨ خطوة مباركة لتقريبك إلى الله في يومك'}
+        </div>
+        <button onclick="toggleDailyChallengeDone()" class="text-xs sm:text-sm font-bold py-2 px-4 rounded-xl shadow-sm transition-all flex items-center gap-2 active:scale-95 ${isDone ? 'bg-emerald-600 text-white' : 'btn-accent'}">
+          <i class="fa-solid ${isDone ? 'fa-circle-check' : 'fa-check'}"></i>
+          <span>${isDone ? 'مكتمل بفضل الله ✓' : 'تم الإنجاز بحمد الله'}</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function toggleDailyChallengeDone() {
+  const today = getTodayDateStr();
+  const current = ls('challenge_done_' + today, false);
+  const next = !current;
+  sv('challenge_done_' + today, next);
+
+  let total = ls('challenge_total_completed', 0);
+  if (next) {
+    total++;
+    showToast('مبارك! تم إنجاز تحدي اليوم، تقبل الله صالح أعمالك 🌿✨', 'success');
+    if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+  } else {
+    total = Math.max(0, total - 1);
+  }
+  sv('challenge_total_completed', total);
+  renderDailyChallengeCard();
+}
+
+function cycleDailyChallenge() {
+  const today = getTodayDateStr();
+  const ch = getTodayChallenge();
+  const nextIdx = (ch.index + 1) % DAILY_CHALLENGES.length;
+  sv('challenge_override_' + today, nextIdx);
+  renderDailyChallengeCard();
+  showToast('تم اختيار تحدٍ إيماني بديل 🔄', 'info');
+}
+
+/* ==========================================================================
+   11.C. نظام مهامي وعباداتي (Muslim Habit & Deeds Tracker)
+   ========================================================================== */
+const DEFAULT_TASKS = {
+  daily: [
+    { id: 'd_fajr', title: 'صلاة الفجر في وقتها', desc: 'أداء صلاة الفجر مع الأذكار وقراءة أذكار الصباح بعدها', cat: 'صلاة' },
+    { id: 'd_duha', title: 'صلاة الضحى (ركعتان على الأقل)', desc: 'صلاة الأوابين تجزئ عن صدقة كل مفصل في جسدك', cat: 'صلاة' },
+    { id: 'd_adhkar_m', title: 'أذكار الصباح كاملة', desc: 'حصن المسلم لبداية يوم مليء بالبركة والمعية', cat: 'ذكر' },
+    { id: 'd_adhkar_e', title: 'أذكار المساء كاملة', desc: 'حصن المسلم لحفظ النفس والأهل والمال عند الغروب', cat: 'ذكر' },
+    { id: 'd_rawatib', title: 'السنن الرواتب (12 ركعة)', desc: 'ركعتان قبل الفجر، 4 قبل الظهر و2 بعده، 2 بعد المغرب، 2 بعد العشاء', cat: 'صلاة' },
+    { id: 'd_quran', title: 'ورد تلاوة القرآن الكريم', desc: 'قراءة جزء أو حزب أو صفحات محددة بتدبر وخشوع', cat: 'قرآن' },
+    { id: 'd_tasbeeh', title: 'الاستغفار والتسبيح 100 مرة', desc: 'حط الخطايا ومغفرة الذنوب وزيادة الرزق والسكينة', cat: 'ذكر' },
+    { id: 'd_witr', title: 'صلاة الوتر وقيام الليل', desc: 'ختام صلاة الليل بركعة وتر قبل النوم أو في السحر', cat: 'صلاة' }
+  ],
+  weekly: [
+    { id: 'w_kahf', title: 'قراءة سورة الكهف يوم الجمعة', desc: 'نور يضيء للمسلم ما بين الجمعتين', cat: 'جمعة' },
+    { id: 'w_salat_prophet', title: 'الإكثار من الصلاة على النبي ﷺ يوم الجمعة', desc: 'الصلاة على النبي ﷺ مئة أو ألف مرة يوم الجمعة وليلتها', cat: 'جمعة' },
+    { id: 'w_fasting', title: 'صيام الاثنين والخميس', desc: 'يومان تعرض فيهما الأعمال على الله تعالى فاحرص أن يرفع عملك وأنت صائم', cat: 'صيام' },
+    { id: 'w_silat', title: 'صلة الرحم وتفقد الأقارب', desc: 'مكالمة هاتفية أو زيارة أو إحسان للأهل والأرحام', cat: 'بر' },
+    { id: 'w_sadaqah', title: 'صدقة الجمعة الأسبوعية', desc: 'التصدق على مسكين أو إطعام محتاج كل أسبوع', cat: 'إحسان' }
+  ],
+  monthly: [
+    { id: 'm_beed', title: 'صيام الأيام البيض (13، 14، 15)', desc: 'صيام ثلاثة أيام من كل شهر هجري يعدل صيام الدهر كله', cat: 'صيام' },
+    { id: 'm_khatma', title: 'إتمام الختمة الشهرية أو ورد محدد', desc: 'إنهاء ختمة القرآن الكريم أو الأجزاء المخططة لهذا الشهر', cat: 'قرآن' },
+    { id: 'm_sadaqah', title: 'الصدقة الشهرية المقتطعة', desc: 'إخراج صدقة شهرية ثابتة لدعم يتيم أو أسرة متعففة', cat: 'إحسان' },
+    { id: 'm_tawbah', title: 'محاسبة النفس والتوبة وتجديد النية', desc: 'جلسة خلوة واستغفار ومحاسبة عما مضى في الشهر', cat: 'تزكية' }
+  ]
+};
+
+let currentTasksTab = 'daily';
+
+function getWeekNumber(d) {
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+function checkHabitAutoResets() {
+  const now = new Date();
+  const todayStr = getTodayDateStr();
+  const weekStr = `${now.getFullYear()}-W${getWeekNumber(now)}`;
+  const monthStr = `${now.getFullYear()}-${now.getMonth() + 1}`;
+
+  // 1. إعادة تعيين اليومي وحساب الاستمرارية (Streak)
+  const lastDaily = ls('tasks_last_daily_date', null);
+  if (lastDaily && lastDaily !== todayStr) {
+    const yesterdayDone = ls('tasks_daily_done_count', 0);
+    const yesterdayTotal = ls('tasks_daily_total_count', 1);
+    let streak = ls('tasks_streak', 0);
+    if (yesterdayTotal > 0 && (yesterdayDone / yesterdayTotal) >= 0.7) {
+      streak++;
+    } else {
+      streak = 0;
+    }
+    sv('tasks_streak', streak);
+    sv('tasks_daily_status', {});
+  }
+  sv('tasks_last_daily_date', todayStr);
+
+  // 2. إعادة تعيين الأسبوعي
+  const lastWeek = ls('tasks_last_weekly_date', null);
+  if (lastWeek && lastWeek !== weekStr) {
+    sv('tasks_weekly_status', {});
+  }
+  sv('tasks_last_weekly_date', weekStr);
+
+  // 3. إعادة تعيين الشهري
+  const lastMonth = ls('tasks_last_monthly_date', null);
+  if (lastMonth && lastMonth !== monthStr) {
+    sv('tasks_monthly_status', {});
+  }
+  sv('tasks_last_monthly_date', monthStr);
+}
+
+function openTasksModule(tab = 'daily') {
+  currentTasksTab = tab;
+  checkHabitAutoResets();
+
+  ['home', 'tasks', 'quran', 'adhkar', 'tasbeeh'].forEach(t => {
+    const btn = $(`#navBtn_${t}`);
+    if (btn) btn.style.color = (t === 'tasks') ? 'var(--accent)' : 'var(--text-muted)';
+  });
+
+  setSubViewTitle('<i class="fa-solid fa-list-check" style="color:var(--accent)"></i> مهامي وعباداتي');
+
+  const statusMap = ls(`tasks_${tab}_status`, {});
+  const customTasks = ls(`tasks_custom_${tab}`, []);
+  const allTasks = [...DEFAULT_TASKS[tab], ...customTasks];
+
+  const totalCount = allTasks.length;
+  const doneCount = allTasks.filter(t => !!statusMap[t.id]).length;
+  const percent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+  if (tab === 'daily') {
+    sv('tasks_daily_done_count', doneCount);
+    sv('tasks_daily_total_count', totalCount);
+  }
+
+  const streak = ls('tasks_streak', 0);
+
+  const html = `
+    <div class="max-w-2xl mx-auto space-y-6">
+      <!-- شريط التبويبات الثلاثة (يومي / أسبوعي / شهري) -->
+      <div class="flex p-1.5 rounded-2xl border gap-1.5 bg-slate-100 dark:bg-slate-800" style="border-color: var(--border-color)">
+        <button onclick="openTasksModule('daily')" class="flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${tab === 'daily' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800'}">
+          <i class="fa-solid fa-sun" style="color:${tab === 'daily' ? 'var(--accent)' : 'inherit'}"></i>
+          <span>ورد اليوم</span>
+        </button>
+        <button onclick="openTasksModule('weekly')" class="flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${tab === 'weekly' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800'}">
+          <i class="fa-solid fa-calendar-week" style="color:${tab === 'weekly' ? 'var(--accent)' : 'inherit'}"></i>
+          <span>مهام الأسبوع</span>
+        </button>
+        <button onclick="openTasksModule('monthly')" class="flex-1 py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1.5 transition ${tab === 'monthly' ? 'bg-white dark:bg-slate-900 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-800'}">
+          <i class="fa-solid fa-moon" style="color:${tab === 'monthly' ? 'var(--accent)' : 'inherit'}"></i>
+          <span>مهام الشهر</span>
+        </button>
+      </div>
+
+      <!-- كارت لوحة الإنجاز والنسبة وعداد الـ Streak -->
+      <div class="card p-5 sm:p-6 relative overflow-hidden" style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--bg-card)), var(--bg-card));">
+        <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div>
+            <div class="text-xs font-bold" style="color: var(--text-muted)">
+              ${tab === 'daily' ? 'مستوى إنجاز الورد اليومي' : tab === 'weekly' ? 'إنجاز مهام الأسبوع' : 'إنجاز أهداف الشهر'}
+            </div>
+            <div class="text-2xl font-black mt-1" style="color: var(--text-primary)">
+              ${toAr(doneCount)} <span class="text-base font-normal text-slate-400">من</span> ${toAr(totalCount)} <span class="text-base font-bold" style="color: var(--accent);">(${toAr(percent)}%)</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="py-1.5 px-3 rounded-2xl border text-xs font-black flex items-center gap-1.5 shadow-xs" style="background: var(--bg-card); border-color: var(--border-color); color: var(--text-primary)">
+              <i class="fa-solid fa-fire text-amber-500 text-sm animate-pulse"></i>
+              <span>الاستمرارية: ${toAr(streak)} ${streak === 1 ? 'يوم' : 'أيام'}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- شريط التقدم التفاعلي -->
+        <div class="w-full bg-slate-200 dark:bg-slate-700 h-3 rounded-full overflow-hidden p-0.5">
+          <div class="h-full rounded-full transition-all duration-500" style="width: ${percent}%; background: linear-gradient(90deg, var(--accent), var(--accent-hover));"></div>
+        </div>
+
+        ${percent === 100 ? `
+          <div class="mt-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-200 text-xs sm:text-sm font-bold text-center animate-fadeIn flex items-center justify-center gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            <span>هنيئاً لك! أتممت كافة مهام ${tab === 'daily' ? 'اليوم' : tab === 'weekly' ? 'الأسبوع' : 'الشهر'}، تقبل الله طاعاتك ورفع درجاتك 🌿✨</span>
+          </div>
+        ` : ''}
+      </div>
+
+      <!-- قائمة المهام مع أزرار الفحص والتحكم -->
+      <div class="space-y-3">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="text-sm font-bold flex items-center gap-2" style="color: var(--text-primary)">
+            <i class="fa-solid fa-list-check" style="color: var(--accent)"></i>
+            <span>قائمة المهام والسنن</span>
+          </h3>
+          <div class="flex items-center gap-2">
+            <button onclick="promptAddCustomTask('${tab}')" class="pill text-xs py-1.5 px-3 font-bold" style="color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent)">
+              <i class="fa-solid fa-plus ml-1"></i> إضافة مهمة خاصة
+            </button>
+            <button onclick="resetTasksTab('${tab}')" class="pill text-xs py-1.5 px-2.5 text-slate-500" title="إعادة تصفير">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
+        </div>
+
+        ${allTasks.map(task => {
+          const isDone = !!statusMap[task.id];
+          const isCustom = !!task.isCustom;
+          return `
+            <div class="card p-3.5 sm:p-4 flex items-start justify-between gap-3 transition-all hover:border-rose-300 ${isDone ? 'opacity-80' : ''}">
+              <label class="flex items-start gap-3 cursor-pointer flex-1 select-none">
+                <input type="checkbox" onchange="toggleTaskDone('${task.id}', '${tab}')" ${isDone ? 'checked' : ''} class="w-5 h-5 rounded-md mt-0.5 accent-rose-600 cursor-pointer shrink-0">
+                <div>
+                  <div class="font-bold text-sm sm:text-base flex items-center gap-2 ${isDone ? 'line-through text-slate-400' : ''}" style="color: ${isDone ? 'var(--text-muted)' : 'var(--text-primary)'}">
+                    <span>${task.title}</span>
+                    <span class="text-[10px] py-0.5 px-2 rounded-full font-bold" style="background: var(--accent-soft); color: var(--accent);">
+                      ${task.cat || 'خاص'}
+                    </span>
+                  </div>
+                  ${task.desc ? `<p class="text-xs mt-1 leading-relaxed ${isDone ? 'line-through opacity-70' : ''}" style="color: var(--text-muted)">${task.desc}</p>` : ''}
+                </div>
+              </label>
+              ${isCustom ? `
+                <button onclick="deleteCustomTask('${task.id}', '${tab}')" class="text-slate-400 hover:text-rose-600 p-1 text-xs shrink-0 transition" title="حذف المهمة">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              ` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  renderSubView(html);
+}
+
+function toggleTaskDone(taskId, tab) {
+  const statusMap = ls(`tasks_${tab}_status`, {});
+  statusMap[taskId] = !statusMap[taskId];
+  sv(`tasks_${tab}_status`, statusMap);
+
+  if (statusMap[taskId]) {
+    if (navigator.vibrate) navigator.vibrate(30);
+  }
+  openTasksModule(tab);
+}
+
+function promptAddCustomTask(tab) {
+  const title = prompt('اكتب عنوان المهمة أو الورد الخاص بك:');
+  if (!title || !title.trim()) return;
+
+  const desc = prompt('اكتب تفاصيل أو ملاحظة إضافية (اختياري):') || '';
+  const customTasks = ls(`tasks_custom_${tab}`, []);
+  const newTask = {
+    id: 'c_' + Date.now(),
+    title: title.trim(),
+    desc: desc.trim(),
+    cat: 'خاص بي',
+    isCustom: true
+  };
+  customTasks.push(newTask);
+  sv(`tasks_custom_${tab}`, customTasks);
+  showToast('تمت إضافة المهمة بنجاح ✓', 'success');
+  openTasksModule(tab);
+}
+
+function deleteCustomTask(taskId, tab) {
+  if (!confirm('هل تريد حذف هذه المهمة المخصصة؟')) return;
+  let customTasks = ls(`tasks_custom_${tab}`, []);
+  customTasks = customTasks.filter(t => t.id !== taskId);
+  sv(`tasks_custom_${tab}`, customTasks);
+
+  const statusMap = ls(`tasks_${tab}_status`, {});
+  delete statusMap[taskId];
+  sv(`tasks_${tab}_status`, statusMap);
+
+  showToast('تم حذف المهمة ✓', 'info');
+  openTasksModule(tab);
+}
+
+function resetTasksTab(tab) {
+  if (!confirm(`هل أنت متأكد من رغبتك في إعادة تصفير مهام ${tab === 'daily' ? 'اليوم' : tab === 'weekly' ? 'الأسبوع' : 'الشهر'}؟`)) return;
+  sv(`tasks_${tab}_status`, {});
+  showToast('تمت إعادة تصفير المهام 🔄', 'info');
+  openTasksModule(tab);
+}
+
+/* ==========================================================================
    12. تهيئة وتوجيه الواجهات (Routing & Initialization)
    ========================================================================== */
 const MAIN_MODULES = [
+  { id: 'tasks', title: 'مهامي وعباداتي', desc: 'تتبع الورد اليومي، الأسبوعي، والشهري', icon: 'fa-list-check', action: openTasksModule },
   { id: 'quran', title: 'القرآن الكريم', desc: 'تلاوة، قراءة وبحث بالسور', icon: 'fa-book-quran', action: openQuranModule },
   { id: 'audio', title: 'التلاوة الصوتية', desc: 'استماع لكبار القراء وإذاعات', icon: 'fa-headphones', action: openAudioModule },
   { id: 'tasbeeh', title: 'السبحة الإلكترونية', desc: 'عداد تسبيح ذكي مع اهتزاز', icon: 'fa-circle-dot', action: openTasbeehView },
@@ -2490,6 +2875,11 @@ function renderSubView(htmlContent) {
 function goHome() {
   $('#subView').hidden = true;
   $('#homeView').hidden = false;
+  ['home', 'tasks', 'quran', 'adhkar', 'tasbeeh'].forEach(t => {
+    const btn = $(`#navBtn_${t}`);
+    if (btn) btn.style.color = (t === 'home') ? 'var(--accent)' : 'var(--text-muted)';
+  });
+  renderDailyChallengeCard();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2542,22 +2932,18 @@ function saveCalcSettings(val) {
    ========================================================================== */
 function mobileNavClick(tab) {
   // تحديث ألوان أيقونات الشريط السفلي
-  ['home', 'quran', 'adhkar', 'tasbeeh', 'audio'].forEach(t => {
+  ['home', 'tasks', 'quran', 'adhkar', 'tasbeeh'].forEach(t => {
     const btn = $(`#navBtn_${t}`);
     if (btn) {
-      if (t === tab) {
-        btn.style.color = 'var(--accent)';
-      } else {
-        btn.style.color = 'var(--text-muted)';
-      }
+      btn.style.color = (t === tab) ? 'var(--accent)' : 'var(--text-muted)';
     }
   });
 
   if (tab === 'home') goHome();
+  else if (tab === 'tasks') openTasksModule();
   else if (tab === 'quran') openQuranModule();
   else if (tab === 'adhkar') openAdhkarCategory('sabah');
   else if (tab === 'tasbeeh') openTasbeehView();
-  else if (tab === 'audio') openAudioModule();
 }
 
 // فحص هل التطبيق يعمل كـ App مثبت مستقل بالفعل
@@ -2746,11 +3132,13 @@ window.addEventListener('DOMContentLoaded', () => {
 
   fetchRandomAyah();
   fetchRandomHadith();
+  renderDailyChallengeCard();
 
   // معالجة اختصارات الشاشة الرئيسية
   const params = new URLSearchParams(window.location.search);
   const section = params.get('section');
-  if (section === 'quran') openQuranModule();
+  if (section === 'tasks') openTasksModule();
+  else if (section === 'quran') openQuranModule();
   else if (section === 'sabah') openAdhkarCategory('sabah');
   else if (section === 'tasbeeh') openTasbeehView();
   else if (section === 'audio') openAudioModule();

@@ -49,6 +49,11 @@
   ],
   "shortcuts": [
     {
+      "name": "مهامي وعباداتي",
+      "url": "./index.html?section=tasks",
+      "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
+    },
+    {
       "name": "أذكار الصباح",
       "url": "./index.html?section=sabah",
       "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
