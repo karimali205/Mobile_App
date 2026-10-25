@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "io.github.karimali205.twa",
+    "sha256_cert_fingerprints": ["48:21:76:3C:69:97:9A:C7:F1:80:3D:D0:20:A0:23:E2:B9:AC:2A:6C:A8:AF:1B:AD:53:C8:C8:91:F9:BF:86:B1"]
+  }
+}]
