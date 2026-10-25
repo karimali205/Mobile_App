@@ -3,7 +3,7 @@
   "name": "رفيق المسلم | رفيقك اليومي للعبادة والذكر",
   "short_name": "رفيق المسلم",
   "description": "تطبيق إسلامي شامل: مواقيت الصلاة والأذان، أذكار الصباح والمساء، القرآن الكريم، التلاوات الصوتية، والقبلة",
-  "start_url": "./app.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -50,22 +50,22 @@
   "shortcuts": [
     {
       "name": "أذكار الصباح",
-      "url": "./app.html?section=sabah",
+      "url": "./index.html?section=sabah",
       "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "القرآن الكريم",
-      "url": "./app.html?section=quran",
+      "url": "./index.html?section=quran",
       "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "السبحة الإلكترونية",
-      "url": "./app.html?section=tasbeeh",
+      "url": "./index.html?section=tasbeeh",
       "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "مواقيت الصلاة",
-      "url": "./app.html?section=prayer",
+      "url": "./index.html?section=prayer",
       "icons": [{ "src": "./icon-192.png", "sizes": "192x192" }]
     }
   ]

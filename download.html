@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <script>
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true || document.referrer.includes('android-app://')) {
+            window.location.replace('index.html');
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تطبيق رفيق المسلم | التحميل والتثبيت للأندرويد والآيفون</title>
+    
+    <!-- Meta SEO & Social Sharing (OpenGraph & Twitter Cards) -->
+    <meta name="title" content="رفيق المسلم | التطبيق الإسلامي الشامل">
+    <meta name="description" content="تطبيق إسلامي شامل بدون إعلانات: قرآن كريم كامل بأصوات كبار القراء، مواقيت الصلاة والأذان، أذكار وسبحة إلكترونية، وإذاعات إسلامية مباشرة. صدقة جارية فنسألكم الدعاء.">
+    <meta name="theme-color" content="#C81E51">
+    
+    <!-- Open Graph / Facebook / LinkedIn / WhatsApp -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="رفيق المسلم | التطبيق الإسلامي الشامل">
+    <meta property="og:description" content="قرآن كريم كامل، إذاعات قرآنية مباشرة، أذكار، سبحة ذكية، ومواقيت صلاة دقيقة. مجاني 100% وبدون أي إعلانات. صدقة جارية على أرواح موتانا.">
+    <meta property="og:image" content="preview-card.png">
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="رفيق المسلم | التطبيق الإسلامي الشامل">
+    <meta name="twitter:description" content="تطبيق إسلامي شامل بدون إعلانات. متاح الآن للتحميل المباشر للأندرويد والآيفون والويب.">
+    <meta name="twitter:image" content="preview-card.png">
+
+    <!-- Fonts & Icons -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        :root {
+            --primary: #C81E51;
+            --primary-hover: #E11D48;
+            --primary-dark: #881337;
+            --primary-deep: #4C0519;
+            --primary-soft: rgba(200, 30, 81, 0.08);
+            --primary-light: #FFF1F2;
+            --gold: #D4AF37;
+            --bg-page: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --border-color: #F1F5F9;
+            --border-accent: #FECDD3;
+            --text-main: #0F172A;
+            --text-muted: #64748B;
+            --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 10px 25px -3px rgba(200, 30, 81, 0.08), 0 4px 10px -4px rgba(200, 30, 81, 0.05);
+            --shadow-lg: 0 20px 35px -5px rgba(200, 30, 81, 0.15), 0 8px 15px -6px rgba(0, 0, 0, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 50% 0%, rgba(200, 30, 81, 0.12) 0%, transparent 55%),
+                radial-gradient(circle at 100% 50%, rgba(225, 29, 72, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 0% 80%, rgba(200, 30, 81, 0.06) 0%, transparent 45%);
+            background-attachment: fixed;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 28px 20px 48px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Hero Header */
+        .hero {
+            text-align: center;
+            margin-top: 8px;
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .app-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--primary-light);
+            border: 1px solid var(--border-accent);
+            color: var(--primary-dark);
+            padding: 6px 18px;
+            border-radius: 50px;
+            font-size: 0.88rem;
+            font-weight: 800;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .app-logo-wrap {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 18px;
+        }
+
+        .app-logo-glow {
+            position: absolute;
+            inset: -6px;
+            border-radius: 30px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            filter: blur(12px);
+            opacity: 0.35;
+            animation: pulse-glow 3s infinite alternate;
+        }
+
+        @keyframes pulse-glow {
+            0% { opacity: 0.25; transform: scale(0.96); }
+            100% { opacity: 0.5; transform: scale(1.04); }
+        }
+
+        .app-logo {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            border-radius: 26px;
+            background: #FFFFFF;
+            border: 2px solid var(--border-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+
+        .app-logo img {
+            width: 84%;
+            height: 84%;
+            object-fit: contain;
+        }
+
+        .app-title {
+            font-family: 'Amiri', serif;
+            font-size: 3.1rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+
+        .app-title span {
+            color: var(--primary);
+        }
+
+        .app-tagline {
+            font-size: 1.08rem;
+            color: var(--text-muted);
+            max-width: 580px;
+            margin: 0 auto 10px;
+            line-height: 1.65;
+            font-weight: 500;
+        }
+
+        /* Sadqa Jariyah Ribbon */
+        .sadqa-banner {
+            background: linear-gradient(135deg, #FFF1F2 0%, #FFFFFF 100%);
+            border: 1.5px dashed var(--border-accent);
+            border-radius: 18px;
+            padding: 14px 22px;
+            margin-bottom: 26px;
+            text-align: center;
+            max-width: 620px;
+            width: 100%;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sadqa-banner p {
+            font-family: 'Amiri', serif;
+            font-size: 1.28rem;
+            color: var(--primary-dark);
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sadqa-banner i {
+            color: var(--primary);
+        }
+
+        /* Action Buttons Area */
+        .action-area {
+            width: 100%;
+            max-width: 620px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 34px;
+        }
+
+        .btn-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 20px;
+            padding: 18px 24px;
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .btn-card:hover {
+            transform: translateY(-3px);
+        }
+
+        /* Android Primary Red Button */
+        .btn-card.android-btn {
+            background: linear-gradient(135deg, #C81E51 0%, #9F1239 100%);
+            color: #FFFFFF;
+            border: 1.5px solid transparent;
+            box-shadow: 0 10px 25px rgba(200, 30, 81, 0.3);
+        }
+
+        .btn-card.android-btn:hover {
+            background: linear-gradient(135deg, #E11D48 0%, #881337 100%);
+            box-shadow: 0 14px 30px rgba(200, 30, 81, 0.4);
+        }
+
+        /* iOS Crisp White & Red Button */
+        .btn-card.ios-btn {
+            background: #FFFFFF;
+            color: var(--text-main);
+            border: 2px solid var(--border-accent);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-card.ios-btn:hover {
+            border-color: var(--primary);
+            box-shadow: 0 12px 28px rgba(200, 30, 81, 0.15);
+        }
+
+        /* Web White Button */
+        .btn-card.web-btn {
+            background: #FFFFFF;
+            color: var(--text-main);
+            border: 1.5px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-card.web-btn:hover {
+            border-color: #CBD5E1;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .btn-icon-box {
+            width: 54px;
+            height: 54px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.7rem;
+            flex-shrink: 0;
+        }
+
+        .android-btn .btn-icon-box {
+            background: rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
+        }
+
+        .ios-btn .btn-icon-box {
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--border-accent);
+        }
+
+        .web-btn .btn-icon-box {
+            background: #F1F5F9;
+            color: #475569;
+        }
+
+        .btn-text h3 {
+            font-size: 1.22rem;
+            font-weight: 800;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .android-btn .btn-text h3 {
+            color: #FFFFFF;
+        }
+
+        .ios-btn .btn-text h3 {
+            color: var(--primary-dark);
+        }
+
+        .web-btn .btn-text h3 {
+            color: #1E293B;
+        }
+
+        .btn-text p {
+            font-size: 0.86rem;
+            font-weight: 500;
+        }
+
+        .android-btn .btn-text p {
+            color: #FFE4E6;
+        }
+
+        .ios-btn .btn-text p, .web-btn .btn-text p {
+            color: var(--text-muted);
+        }
+
+        .badge-pill {
+            font-size: 0.72rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 800;
+        }
+
+        .android-btn .badge-pill {
+            background: rgba(255, 255, 255, 0.25);
+            color: #FFFFFF;
+        }
+
+        .ios-btn .badge-pill {
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            border: 1px solid var(--border-accent);
+        }
+
+        .web-btn .badge-pill {
+            background: #F1F5F9;
+            color: #475569;
+        }
+
+        .btn-arrow {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .android-btn .btn-arrow {
+            background: rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
+        }
+
+        .ios-btn .btn-arrow {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .web-btn .btn-arrow {
+            background: #F1F5F9;
+            color: #64748B;
+        }
+
+        .btn-card:hover .btn-arrow {
+            transform: translateX(-5px);
+        }
+
+        /* Active device badge */
+        .detected-badge {
+            position: absolute;
+            top: 0;
+            left: 24px;
+            background: #BE123C;
+            color: #FFFFFF;
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 3px 12px;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+            box-shadow: 0 4px 10px rgba(190, 18, 60, 0.3);
+            display: none;
+        }
+
+        /* Features Section */
+        .features-grid {
+            width: 100%;
+            max-width: 780px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 34px;
+        }
+
+        .feature-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-top: 3px solid var(--primary);
+            border-radius: 18px;
+            padding: 20px 18px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--border-accent);
+            border-top-color: var(--primary-hover);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: var(--primary-light);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin: 0 auto 12px;
+        }
+
+        .feature-card h4 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            margin-bottom: 6px;
+            color: var(--primary-dark);
+        }
+
+        .feature-card p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            font-weight: 500;
+        }
+
+        /* Author & Credits Footer Card */
+        .author-card {
+            width: 100%;
+            max-width: 620px;
+            background: #FFFFFF;
+            border: 1.5px solid var(--border-accent);
+            border-radius: 24px;
+            padding: 26px 24px;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            position: relative;
+            margin-top: 10px;
+        }
+
+        .author-avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            margin: -58px auto 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: #FFFFFF;
+            border: 4px solid #FFFFFF;
+            box-shadow: var(--shadow-md);
+        }
+
+        .author-name {
+            font-size: 1.45rem;
+            font-weight: 900;
+            color: var(--primary-dark);
+            margin-bottom: 2px;
+        }
+
+        .author-sub {
+            font-size: 0.95rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .author-duaa {
+            font-family: 'Amiri', serif;
+            font-size: 1.25rem;
+            color: var(--primary-dark);
+            line-height: 1.8;
+            background: var(--primary-light);
+            border: 1px dashed var(--border-accent);
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .contact-links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .contact-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border-radius: 50px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            color: #334155;
+            text-decoration: none;
+            font-size: 0.88rem;
+            font-weight: 700;
+            transition: all 0.2s ease;
+        }
+
+        .contact-pill:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .contact-pill i {
+            color: var(--primary);
+        }
+
+        /* iOS Installation Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-box {
+            background: #FFFFFF;
+            border: 1.5px solid var(--border-accent);
+            border-radius: 24px;
+            width: 100%;
+            max-width: 480px;
+            padding: 28px 24px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            animation: modal-pop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes modal-pop {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            background: #F1F5F9;
+            border: none;
+            color: #64748B;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 22px;
+        }
+
+        .modal-header i {
+            font-size: 2.6rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .modal-header h3 {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+        }
+
+        .modal-header p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .ios-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 22px;
+        }
+
+        .ios-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: #F8FAFC;
+            border: 1px solid var(--border-color);
+            padding: 14px;
+            border-radius: 14px;
+        }
+
+        .step-num {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .step-content h5 {
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: 3px;
+        }
+
+        .step-content p {
+            font-size: 0.84rem;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        .step-content i {
+            color: var(--primary);
+            margin: 0 4px;
+        }
+
+        .modal-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 800;
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #C81E51 0%, #9F1239 100%);
+            color: #FFFFFF;
+            box-shadow: 0 8px 20px rgba(200, 30, 81, 0.3);
+        }
+
+        .modal-btn.primary:hover {
+            background: linear-gradient(135deg, #E11D48 0%, #881337 100%);
+            box-shadow: 0 10px 25px rgba(200, 30, 81, 0.4);
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--primary-dark);
+            color: #FFFFFF;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 0.92rem;
+            font-weight: 800;
+            box-shadow: var(--shadow-lg);
+            transition: transform 0.3s ease;
+            z-index: 10000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 600px) {
+            .app-title {
+                font-size: 2.4rem;
+            }
+            .btn-card {
+                padding: 16px 18px;
+            }
+            .btn-icon-box {
+                width: 48px;
+                height: 48px;
+                font-size: 1.5rem;
+            }
+            .btn-text h3 {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Hero Section -->
+        <header class="hero">
+            <div class="app-badge">
+                <i class="fa-solid fa-star-and-crescent"></i> إصدار مجاني 100% بدون إعلانات
+            </div>
+
+            <div class="app-logo-wrap">
+                <div class="app-logo-glow"></div>
+                <div class="app-logo">
+                    <img src="icon-192.png" alt="شعار رفيق المسلم" onerror="this.onerror=null; this.src='icon.svg';">
+                </div>
+            </div>
+
+            <h1 class="app-title">رفيق <span>المسلم</span></h1>
+            <p class="app-tagline">
+                بوابتك المتكاملة للعبادة: قرآن كريم كامل بأصوات كبار المشايخ، إذاعات مباشرة، أذكار ميسرة، سبحة إلكترونية، ومواقيت صلاة تلقائية بدقة عالية.
+            </p>
+        </header>
+
+        <!-- Sadqa Jariyah Message -->
+        <div class="sadqa-banner">
+            <p>
+                <i class="fa-solid fa-hands-praying"></i>
+                صدقة جارية على أرواح موتانا من المسلمين فنسألكم الدعاء وقراءة الفاتحة
+            </p>
+        </div>
+
+        <!-- Download Buttons -->
+        <section class="action-area">
+
+            <!-- Android APK Download Button (Crimson Primary) -->
+            <a href="rafiq-almuslim.apk" download="rafiq-almuslim.apk" class="btn-card android-btn" id="btnAndroid">
+                <div class="detected-badge" id="androidBadge"><i class="fa-brands fa-android"></i> متوافق مع هاتفك</div>
+                <div class="btn-left">
+                    <div class="btn-icon-box">
+                        <i class="fa-brands fa-android"></i>
+                    </div>
+                    <div class="btn-text">
+                        <h3>تحميل للأندرويد (ملف APK فوري) <span class="badge-pill">مباشر</span></h3>
+                        <p>تثبيت سريع وخفيف (~1.3 ميجابايت) • يعمل بدون متجر</p>
+                    </div>
+                </div>
+                <div class="btn-arrow">
+                    <i class="fa-solid fa-arrow-down"></i>
+                </div>
+            </a>
+
+            <!-- iOS (iPhone / iPad) Install Button (Crisp White & Crimson) -->
+            <div class="btn-card ios-btn" id="btnIOS" onclick="openIOSModal()">
+                <div class="detected-badge" id="iosBadge"><i class="fa-brands fa-apple"></i> جهازك آيفون</div>
+                <div class="btn-left">
+                    <div class="btn-icon-box">
+                        <i class="fa-brands fa-apple"></i>
+                    </div>
+                    <div class="btn-text">
+                        <h3>تثبيت للآيفون (iPhone / iPad) <span class="badge-pill">PWA</span></h3>
+                        <p>تثبيت فوري بضغطة زر عبر Safari دون الحاجة لـ App Store</p>
+                    </div>
+                </div>
+                <div class="btn-arrow">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+            </div>
+
+            <!-- Web Instant Access -->
+            <a href="index.html" class="btn-card web-btn" id="btnWeb">
+                <div class="btn-left">
+                    <div class="btn-icon-box">
+                        <i class="fa-solid fa-globe"></i>
+                    </div>
+                    <div class="btn-text">
+                        <h3>فتح التطبيق مباشرة في المتصفح <span class="badge-pill">Web App</span></h3>
+                        <p>تجربة فورية وسلسة على الكمبيوتر أو أي جهاز</p>
+                    </div>
+                </div>
+                <div class="btn-arrow">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </div>
+            </a>
+
+        </section>
+
+        <!-- Features Grid -->
+        <section class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-book-quran"></i></div>
+                <h4>المصحف الصوتي الكامل</h4>
+                <p>استمع للقرآن الكريم كاملاً بأصوات (المعيقلي، الدوسري، الجليل، العفاسي، عبدالباسط، الحصري، المنشاوي، الغامدي، والعجمي).</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-tower-broadcast"></i></div>
+                <h4>إذاعات القرآن المباشرة</h4>
+                <p>بث حي لإذاعة القرآن الكريم من القاهرة، مكة المكرمة، وإذاعات تلاوات خاشعة وتفسير تعمل على مدار 24 ساعة.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-clock"></i></div>
+                <h4>مواقيت الصلاة والشروق</h4>
+                <p>تحديد تلقائي للموقع الجغرافي وحساب دقيق للأوقات مع تنبيهات دخول الوقت والشروق وصلاة الضحى والقبلة.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-fingerprint"></i></div>
+                <h4>أذكار وسبحة رقمية</h4>
+                <p>أذكار الصباح والمساء، تصفير يومي تلقائي، عداد تفاعلي، واهتزاز مع كل تسبيحة لتجربة مريحة وسلسة.</p>
+            </div>
+        </section>
+
+        <!-- Author & Dedication Card -->
+        <footer class="author-card">
+            <div class="author-avatar">
+                <i class="fa-solid fa-user-check"></i>
+            </div>
+            <h2 class="author-name">Karim Ali</h2>
+            <div class="author-sub">Data Scientist & AI Developer</div>
+
+            <div class="author-duaa">
+                "صدقة جارية على أرواح موتانا من المسلمين فنسألكم الدعاء وقراءة الفاتحة"
+            </div>
+
+            <div class="contact-links">
+                <a href="https://www.linkedin.com/in/karim-ali-2209151b6/" target="_blank" rel="noopener" class="contact-pill">
+                    <i class="fa-brands fa-linkedin"></i> LinkedIn: Karim Ali
+                </a>
+                <a href="mailto:karimali12qw@gmail.com" class="contact-pill">
+                    <i class="fa-solid fa-envelope"></i> karimali12qw@gmail.com
+                </a>
+                <a href="tel:01116009359" class="contact-pill" onclick="copyContact('01116009359', event)">
+                    <i class="fa-solid fa-phone"></i> 01116009359
+                </a>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- iOS Step-by-Step Installation Modal -->
+    <div class="modal-overlay" id="iosModal" onclick="closeModalOutside(event)">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeIOSModal()"><i class="fa-solid fa-xmark"></i></button>
+            <div class="modal-header">
+                <i class="fa-brands fa-apple"></i>
+                <h3>طريقة تثبيت التطبيق على الآيفون</h3>
+                <p>بـ 3 خطوات سريعة وبدون الحاجة لمتجر App Store</p>
+            </div>
+
+            <div class="ios-steps">
+                <div class="ios-step">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <h5>فتح التطبيق في متصفح Safari</h5>
+                        <p>اضغط على زر "فتح التطبيق الآن" بالأسفل.</p>
+                    </div>
+                </div>
+
+                <div class="ios-step">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <h5>الضغط على زر المشاركة</h5>
+                        <p>من أسفل شاشة Safari، اضغط على أيقونة المشاركة <i class="fa-solid fa-arrow-up-from-bracket"></i> (المربع الذي يخرج منه سهم للأعلى).</p>
+                    </div>
+                </div>
+
+                <div class="ios-step">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <h5>إضافة إلى الشاشة الرئيسية</h5>
+                        <p>انزل لأسفل القائمة واختر <strong>"إضافة إلى الشاشة الرئيسية"</strong> <i class="fa-regular fa-square-plus"></i> (Add to Home Screen)، ثم اضغط <strong>إضافة (Add)</strong>.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <a href="index.html" class="modal-btn primary">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> فتح التطبيق الآن لتثبيته
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">تم النسخ بنجاح</div>
+
+    <script>
+        // Automatic Device Detection
+        document.addEventListener('DOMContentLoaded', () => {
+            const ua = navigator.userAgent || navigator.vendor || window.opera;
+            const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+            const isAndroid = /android/i.test(ua);
+
+            if (isAndroid) {
+                const badge = document.getElementById('androidBadge');
+                if (badge) badge.style.display = 'block';
+            } else if (isIOS) {
+                const badge = document.getElementById('iosBadge');
+                if (badge) badge.style.display = 'block';
+                document.getElementById('btnIOS').style.borderColor = '#C81E51';
+            }
+        });
+
+        function openIOSModal() {
+            document.getElementById('iosModal').classList.add('active');
+        }
+
+        function closeIOSModal() {
+            document.getElementById('iosModal').classList.remove('active');
+        }
+
+        function closeModalOutside(e) {
+            if (e.target.id === 'iosModal') {
+                closeIOSModal();
+            }
+        }
+
+        function copyContact(text, event) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('تم نسخ الرقم: ' + text);
+                });
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
