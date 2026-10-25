@@ -406,6 +406,14 @@ body {
     </div>
     <div id="subViewContent"></div>
   </section>
+
+  <!-- الفوتر الموحد لجميع الصفحات -->
+  <footer class="mt-10 mb-4 text-center">
+    <button onclick="openAboutModal()" class="inline-flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-xl transition hover:opacity-80" style="color: var(--text-muted)">
+      <span>Created By:</span>
+      <span class="font-bold underline decoration-2 underline-offset-4" style="color: var(--accent); text-decoration-color: var(--accent)">Karim Ali</span>
+    </button>
+  </footer>
 </main>
 
 <!-- المشغل الصوتي العائم (يستقر فوق شريط التنقل السفلي) -->
@@ -605,7 +613,7 @@ const MAJOR_CITIES = [
   { name: 'القدس الشريف', lat: 31.7683, lng: 35.2137 }
 ];
 
-let userLocation = ls('loc', MAJOR_CITIES[0]);
+let userLocation = ls('loc', null) || { name: 'جاري تحديد موقعك...', lat: 30.0444, lng: 31.2357, isPending: true };
 let currentDayOffset = 0;
 let todayTimingsData = null;
 let displayedTimingsData = null;
@@ -635,6 +643,7 @@ const dateToDDMMYYYY = (d) => {
 // توليد قائمة المدن
 function initCitiesDropdown() {
   const sel = $('#citySelect');
+  if (!sel) return;
   sel.innerHTML = MAJOR_CITIES.map((c, idx) => `
     <option value="${idx}" ${c.name === userLocation.name ? 'selected' : ''}>${c.name}</option>
   `).join('') + `<option value="-1" ${userLocation.isGPS ? 'selected' : ''}>📍 موقع GPS مخصص</option>`;
@@ -650,12 +659,19 @@ function onCityChange(val) {
   }
 }
 
-function detectGPS() {
+function detectGPS(isAuto = false) {
   if (!navigator.geolocation) {
-    showToast('متصفحك لا يدعم خاصية تحديد الموقع الجغرافي', 'warn');
+    if (!isAuto) showToast('متصفحك لا يدعم خاصية تحديد الموقع الجغرافي', 'warn');
+    if (userLocation.isPending) {
+      userLocation = { ...MAJOR_CITIES[0], isGPS: false };
+      sv('loc', userLocation);
+      loadPrayerTimes();
+    }
     return;
   }
-  showToast('جاري تحديد إحداثيات موقعك عبر GPS...', 'info');
+
+  if (!isAuto) showToast('جاري تحديد إحداثيات موقعك عبر GPS...', 'info');
+
   navigator.geolocation.getCurrentPosition(
     pos => {
       userLocation = {
@@ -665,15 +681,24 @@ function detectGPS() {
         isGPS: true
       };
       sv('loc', userLocation);
-      $('#citySelect').value = '-1';
+      const sel = $('#citySelect');
+      if (sel) sel.value = '-1';
       currentDayOffset = 0;
       loadPrayerTimes();
-      showToast('تم تحديد موقعك بدقة بنجاح ✓', 'success');
+      showToast('تم تحديد مواقيت الصلاة لموقعك الحالي بدقة ✓', 'success');
     },
     err => {
-      showToast('تعذر الوصول للموقع. يرجى السماح للمتصفح بالوصول لموقعك.', 'error');
+      console.warn('Geolocation prompt error or denied:', err);
+      if (userLocation.isPending) {
+        userLocation = { ...MAJOR_CITIES[0], isGPS: false };
+        sv('loc', userLocation);
+        loadPrayerTimes();
+      }
+      if (!isAuto) {
+        showToast('تعذر الوصول للموقع. يرجى تفعيل الـ GPS في الهاتف.', 'error');
+      }
     },
-    { timeout: 10000, enableHighAccuracy: true }
+    { timeout: 9000, enableHighAccuracy: true }
   );
 }
 
@@ -744,11 +769,9 @@ function renderPrayerTimesGrid(dateObj, data) {
     return `
       <div class="card p-3.5 flex items-center justify-between ${isDone ? 'opacity-60 bg-slate-50 dark:bg-slate-800/40' : ''}">
         <div class="flex items-center gap-3">
-          ${!isSunrise ? `
-            <button onclick="togglePrayerDone('${dateKey}','${p.id}')" class="text-xl hover:scale-110 transition" style="color:var(--accent)" title="تحديد كصلاة مؤداة">
-              <i class="${isDone ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i>
-            </button>
-          ` : `<span class="w-5 text-center text-amber-500"><i class="fa-solid fa-sun"></i></span>`}
+          <button onclick="togglePrayerDone('${dateKey}','${p.id}')" class="text-xl hover:scale-110 transition" style="color:var(--accent)" title="${isSunrise ? 'تحديد كورد الشروق / صلاة الضحى' : 'تحديد كصلاة مؤداة'}">
+            <i class="${isDone ? 'fa-solid fa-circle-check' : 'fa-regular fa-circle'}"></i>
+          </button>
           <div>
             <div class="font-bold text-base flex items-center gap-1.5">
               <span>${p.name}</span>
@@ -761,19 +784,17 @@ function renderPrayerTimesGrid(dateObj, data) {
 
         <div class="text-left flex flex-col items-end gap-1">
           <span class="font-bold text-lg tracking-wide font-mono" dir="ltr">${formatTo12H(rawTime)}</span>
-          ${!isSunrise ? `
-            <div class="flex items-center gap-1 text-xs">
-              <button onclick="toggleNotification('${p.id}','b')" title="تنبيه قبل الأذان بـ 10 دقائق" class="pill !p-1 !px-1.5 text-[11px] ${notificationSettings[p.id + '_b'] ? 'active' : ''}">
-                <i class="fa-${notificationSettings[p.id + '_b'] ? 'solid' : 'regular'} fa-bell"></i> ق
-              </button>
-              <button onclick="toggleNotification('${p.id}','at')" title="تنبيه عند الأذان" class="pill !p-1 !px-1.5 text-[11px] ${notificationSettings[p.id + '_at'] ? 'active' : ''}">
-                <i class="fa-${notificationSettings[p.id + '_at'] ? 'solid' : 'regular'} fa-bell"></i> ع
-              </button>
-              <button onclick="toggleNotification('${p.id}','a')" title="تنبيه بعد الأذان بـ 10 دقائق للإقامة" class="pill !p-1 !px-1.5 text-[11px] ${notificationSettings[p.id + '_a'] ? 'active' : ''}">
-                <i class="fa-${notificationSettings[p.id + '_a'] ? 'solid' : 'regular'} fa-bell"></i> ب
-              </button>
-            </div>
-          ` : ''}
+          <div class="flex items-center gap-1 text-xs">
+            <button onclick="toggleNotification('${p.id}','b')" title="${isSunrise ? 'تنبيه قبل الشروق بـ 10 دقائق (انتهاء وقت الفجر)' : 'تنبيه قبل الأذان بـ 10 دقائق'}" class="pill !p-1 !px-1.5 text-[11px] ${notificationSettings[p.id + '_b'] ? 'active' : ''}">
+              <i class="fa-${notificationSettings[p.id + '_b'] ? 'solid' : 'regular'} fa-bell"></i> ق
+            </button>
+            <button onclick="toggleNotification('${p.id}','at')" title="${isSunrise ? 'تنبيه وقت الشروق' : 'تنبيه عند الأذان'}" class="pill !p-1 !px-1.5 text-[11px] ${notificationSettings[p.id + '_at'] ? 'active' : ''}">
+              <i class="fa-${notificationSettings[p.id + '_at'] ? 'solid' : 'regular'} fa-bell"></i> ع
+            </button>
+            <button onclick="toggleNotification('${p.id}','a')" title="${isSunrise ? 'تنبيه بعد الشروق بـ 15 دقيقة (دخول وقت صلاة الضحى)' : 'تنبيه بعد الأذان بـ 10 دقائق للإقامة'}" class="pill !p-1 !px-1.5 text-[11px] ${notificationSettings[p.id + '_a'] ? 'active' : ''}">
+              <i class="fa-${notificationSettings[p.id + '_a'] ? 'solid' : 'regular'} fa-bell"></i> ب
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -916,34 +937,44 @@ function tickPrayerCountdown() {
 
   // التحقق من التنبيهات المجدولة (قبل / عند / بعد)
   prayerTimesArr.forEach(p => {
-    if (p.id === 'Sunrise') return;
     const pTime = p.timeObj.getTime();
-    
+    const isSunrise = p.id === 'Sunrise';
+
     // قبل بـ 10 دقائق
     if (notificationSettings[p.id + '_b']) {
       const alertTime = pTime - 10 * 60 * 1000;
       const alertId = `${todayDateStr}_${p.id}_b`;
       if (now.getTime() >= alertTime && now.getTime() < alertTime + 60000 && !firedAlertsThisDay.has(alertId)) {
         firedAlertsThisDay.add(alertId);
-        triggerAlert('اقترب وقت الصلاة', `بقي ١٠ دقائق على أذان ${p.name}`);
+        triggerAlert(
+          isSunrise ? 'اقتراب شروق الشمس' : 'اقترب وقت الصلاة',
+          isSunrise ? 'بقي ١٠ دقائق على شروق الشمس (انتهاء وقت صلاة الفجر)' : `بقي ١٠ دقائق على أذان ${p.name}`
+        );
       }
     }
-    // عند الأذان
+    // عند الأذان أو الشروق
     if (notificationSettings[p.id + '_at']) {
       const alertTime = pTime;
       const alertId = `${todayDateStr}_${p.id}_at`;
       if (now.getTime() >= alertTime && now.getTime() < alertTime + 60000 && !firedAlertsThisDay.has(alertId)) {
         firedAlertsThisDay.add(alertId);
-        triggerAlert('حان الآن موعد الأذان', `الله أكبر، حان الآن موعد أذان ${p.name}`);
+        triggerAlert(
+          isSunrise ? 'شروق الشمس' : 'حان الآن موعد الأذان',
+          isSunrise ? 'أشرقت الشمس الآن، تقبل الله طاعتكم ☀️' : `الله أكبر، حان الآن موعد أذان ${p.name}`
+        );
       }
     }
-    // بعد الأذان بـ 10 دقائق
+    // بعد الأذان (أو بعد الشروق بـ 15 دقيقة لدخول صلاة الضحى)
     if (notificationSettings[p.id + '_a']) {
-      const alertTime = pTime + 10 * 60 * 1000;
+      const offsetMs = isSunrise ? 15 * 60 * 1000 : 10 * 60 * 1000;
+      const alertTime = pTime + offsetMs;
       const alertId = `${todayDateStr}_${p.id}_a`;
       if (now.getTime() >= alertTime && now.getTime() < alertTime + 60000 && !firedAlertsThisDay.has(alertId)) {
         firedAlertsThisDay.add(alertId);
-        triggerAlert('تنبيه الإقامة', `مرت ١٠ دقائق على أذان ${p.name}، استعد لأداء الصلاة`);
+        triggerAlert(
+          isSunrise ? 'صلاة الضحى' : 'تنبيه الإقامة',
+          isSunrise ? 'حان الآن وقت صلاة الضحى المباركة (صلاة الأوابين) 🌿' : `مرت ١٠ دقائق على أذان ${p.name}، استعد لأداء الصلاة`
+        );
       }
     }
   });
@@ -1049,73 +1080,128 @@ function initQuickAdhkarBar() {
   `).join('');
 }
 
-// عرض فئة الأذكار مع العداد التفاعلي الذكي
+// عرض فئة الأذكار مع العداد التفاعلي الذكي والتحكم المتقدم
 let currentCategoryAdhkar = [];
 let currentCategoryCounters = [];
-function openAdhkarCategory(catId) {
+let currentOpenCatId = 'sabah';
+let adhkarFontSize = ls('adhkar_font_size', 20);
+let adhkarSoundEnabled = ls('adhkar_sound', true);
+
+function openAdhkarCategory(catId, isNewVisit = true) {
+  currentOpenCatId = catId;
   const cat = ADHKAR_CATEGORIES.find(c => c.id === catId);
   currentCategoryAdhkar = BUILTIN_ADHKAR[catId] || [];
-  currentCategoryCounters = currentCategoryAdhkar.map(a => a.count);
+
+  // التحقق من تصفير الورد (إعادة البدء دائماً عند الدخول الجديد أو تاريخ جديد)
+  const todayStr = dateToDDMMYYYY(new Date());
+  const lastAdhkarDay = ls('adhkar_last_day_' + catId, '');
+  if (isNewVisit || lastAdhkarDay !== todayStr) {
+    currentCategoryCounters = currentCategoryAdhkar.map(a => a.count);
+    sv('adhkar_last_day_' + catId, todayStr);
+  }
 
   const title = cat ? cat.name : 'الأذكار';
   setSubViewTitle(`<i class="fa-solid ${cat.icon}" style="color:${cat.color}"></i> ${title}`);
 
+  const finishedCount = currentCategoryCounters.filter(c => c === 0).length;
+  const percent = currentCategoryAdhkar.length ? (finishedCount / currentCategoryAdhkar.length) * 100 : 0;
+
   const html = `
-    <!-- شريط الإنجاز التفاعلي -->
-    <div class="card p-4 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-3">
-        <div class="w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg" style="background:var(--accent-soft); color:var(--accent)">
-          <span id="adhkarCompletedCount">٠</span>/${toAr(currentCategoryAdhkar.length)}
+    <!-- شريط أدوات الورد والتحكم بالخط والتصفير -->
+    <div class="card p-4 mb-4 space-y-3 sticky top-16 z-30 backdrop-blur-md bg-opacity-95 shadow-sm">
+      <div class="flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2">
+          <button onclick="resetCurrentAdhkarCategory()" class="pill text-xs py-1.5 px-3 border-rose-400 text-rose-600 dark:text-rose-400 font-bold" title="إعادة بدء عداد هذا الورد من البداية">
+            <i class="fa-solid fa-rotate-right ml-1"></i> تصفير وإعادة الورد
+          </button>
+          <button onclick="toggleAdhkarSound()" id="adhkarSoundToggleBtn" class="pill text-xs py-1.5 px-3">
+            <i class="fa-solid ${adhkarSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'} ml-1"></i> ${adhkarSoundEnabled ? 'الصوت: مفعل' : 'صامت'}
+          </button>
         </div>
-        <div>
-          <div class="font-bold">نسبة إنجاز الورد</div>
-          <div class="text-xs" style="color:var(--text-muted)">انقر على البطاقة لتسبيح الذكر وتناقص العداد</div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs" style="color:var(--text-muted)">حجم الخط:</span>
+          <button onclick="changeAdhkarFontSize(-2)" class="pill text-xs py-1 px-2.5 font-bold">A-</button>
+          <button onclick="changeAdhkarFontSize(2)" class="pill text-xs py-1 px-2.5 font-bold">A+</button>
         </div>
       </div>
-      <div class="w-full sm:w-64 h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div id="adhkarCategoryProgressBar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width:0%"></div>
+
+      <!-- مؤشر الإنجاز والنسبة -->
+      <div class="flex items-center justify-between gap-3 pt-2 border-t text-xs font-bold" style="border-color:var(--border-color)">
+        <div class="flex items-center gap-2">
+          <span>المنجز:</span>
+          <span id="adhkarCompletedCount" class="text-sm font-mono" style="color:var(--accent)">${toAr(finishedCount)}</span>
+          <span style="color:var(--text-muted)">من أصل ${toAr(currentCategoryAdhkar.length)} ذكراً</span>
+        </div>
+        <span id="adhkarPercentBadge" class="font-mono">${toAr(Math.round(percent))}%</span>
+      </div>
+      <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div id="adhkarCategoryProgressBar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width:${percent}%"></div>
       </div>
     </div>
 
-    <!-- قائمة بطاقات الأذكار التفاعلية -->
-    <div class="space-y-3.5" id="adhkarItemsContainer">
-      ${currentCategoryAdhkar.map((item, idx) => `
-        <div id="dhikrCard_${idx}" onclick="decrementDhikrCounter(${idx})" class="card p-5 cursor-pointer select-none transition-all duration-200 hover:border-rose-400 active:scale-[0.99] relative overflow-hidden group">
-          <div class="font-amiri text-lg sm:text-xl leading-relaxed whitespace-pre-line font-bold mb-2">
-            ${item.text}
-          </div>
-          ${item.fadl ? `
-            <div class="text-xs sm:text-sm font-medium p-2.5 rounded-lg mb-3 flex items-start gap-2" style="background:var(--accent-soft); color:var(--text-primary)">
-              <i class="fa-solid fa-star text-amber-500 mt-1"></i>
-              <span>${item.fadl}</span>
+    <!-- قائمة بطاقات الأذكار بتصميمها الجديد المميز -->
+    <div class="space-y-4" id="adhkarItemsContainer">
+      ${currentCategoryAdhkar.map((item, idx) => {
+        const isDone = currentCategoryCounters[idx] === 0;
+        return `
+          <div id="dhikrCard_${idx}" onclick="decrementDhikrCounter(${idx})" class="card p-5 sm:p-6 cursor-pointer select-none transition-all duration-200 hover:border-rose-400 active:scale-[0.99] relative overflow-hidden group ${isDone ? 'opacity-50 bg-emerald-500/5 border-emerald-400' : ''}">
+            <div class="font-amiri leading-relaxed whitespace-pre-line font-bold mb-3 transition-all" style="font-size: ${adhkarFontSize}px">
+              ${item.text}
             </div>
-          ` : ''}
-          <div class="flex items-center justify-between pt-2 border-t" style="border-color:var(--border-color)">
-            <button onclick="event.stopPropagation(); copyText('${item.text.replace(/\n/g, ' ')}')" class="pill text-xs py-1 px-3">
-              <i class="fa-solid fa-copy"></i> نسخ
-            </button>
-            <div class="flex items-center gap-2">
-              <span class="text-xs" style="color:var(--text-muted)">المتبقي:</span>
-              <span id="counterBadge_${idx}" class="btn-accent min-w-[3rem] text-center font-mono font-bold text-base py-1 px-3 rounded-full transition-all duration-150">
-                ${toAr(item.count)}
-              </span>
+            ${item.fadl ? `
+              <div class="text-xs sm:text-sm font-medium p-3 rounded-xl mb-3.5 flex items-start gap-2.5 border border-amber-300/40" style="background:var(--accent-soft); color:var(--text-primary)">
+                <i class="fa-solid fa-star text-amber-500 mt-0.5 shrink-0"></i>
+                <span class="leading-relaxed">${item.fadl}</span>
+              </div>
+            ` : ''}
+            <div class="flex items-center justify-between pt-3 border-t" style="border-color:var(--border-color)">
+              <button onclick="event.stopPropagation(); copyText('${item.text.replace(/\n/g, ' ')}')" class="pill text-xs py-1.5 px-3">
+                <i class="fa-solid fa-copy ml-1"></i> نسخ
+              </button>
+              <div class="flex items-center gap-2">
+                <span class="text-xs" style="color:var(--text-muted)">المتبقي:</span>
+                <span id="counterBadge_${idx}" class="w-12 h-12 rounded-2xl flex items-center justify-center font-mono font-bold text-lg shadow-md transition-all duration-150 ${isDone ? 'bg-emerald-600 text-white' : 'btn-accent'}">
+                  ${isDone ? '<i class="fa-solid fa-check"></i>' : toAr(currentCategoryCounters[idx])}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      `).join('')}
+        `;
+      }).join('')}
     </div>
   `;
 
   renderSubView(html);
 }
 
+function resetCurrentAdhkarCategory() {
+  currentCategoryCounters = currentCategoryAdhkar.map(a => a.count);
+  openAdhkarCategory(currentOpenCatId, false);
+  showToast('تمت إعادة ضبط وتصفير الورد للبدء من جديد 🌿', 'info');
+}
+
+function changeAdhkarFontSize(delta) {
+  adhkarFontSize = Math.max(16, Math.min(32, adhkarFontSize + delta));
+  sv('adhkar_font_size', adhkarFontSize);
+  $$('#adhkarItemsContainer .font-amiri').forEach(el => el.style.fontSize = adhkarFontSize + 'px');
+}
+
+function toggleAdhkarSound() {
+  adhkarSoundEnabled = !adhkarSoundEnabled;
+  sv('adhkar_sound', adhkarSoundEnabled);
+  const btn = $('#adhkarSoundToggleBtn');
+  if (btn) {
+    btn.innerHTML = `<i class="fa-solid ${adhkarSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'} ml-1"></i> ${adhkarSoundEnabled ? 'الصوت: مفعل' : 'صامت'}`;
+  }
+}
+
 function decrementDhikrCounter(idx) {
   if (currentCategoryCounters[idx] <= 0) return;
   currentCategoryCounters[idx]--;
   
-  // اهتزاز خفيف بالهاتف
   if (navigator.vibrate) navigator.vibrate(35);
-  playSyntheticClick();
+  if (adhkarSoundEnabled) playSyntheticClick();
 
   const badge = $(`#counterBadge_${idx}`);
   const card = $(`#dhikrCard_${idx}`);
@@ -1127,7 +1213,7 @@ function decrementDhikrCounter(idx) {
     badge.innerHTML = '<i class="fa-solid fa-check"></i>';
     badge.classList.remove('btn-accent');
     badge.classList.add('bg-emerald-600', 'text-white');
-    card.classList.add('opacity-40', 'bg-emerald-50', 'dark:bg-emerald-950/20');
+    card.classList.add('opacity-50', 'bg-emerald-500/5', 'border-emerald-400');
     
     // التمرير التلقائي اللطيف للذكر التالي
     const nextCard = $(`#dhikrCard_${idx + 1}`);
@@ -1138,12 +1224,14 @@ function decrementDhikrCounter(idx) {
 
   // تحديث شريط التقدم
   const finishedCount = currentCategoryCounters.filter(c => c === 0).length;
+  const percent = Math.round((finishedCount / currentCategoryAdhkar.length) * 100);
   $('#adhkarCompletedCount').textContent = toAr(finishedCount);
-  const percent = (finishedCount / currentCategoryAdhkar.length) * 100;
+  $('#adhkarPercentBadge').textContent = `${toAr(percent)}%`;
   $('#adhkarCategoryProgressBar').style.width = percent + '%';
 
   if (finishedCount === currentCategoryAdhkar.length) {
-    showToast('هنيئاً لك! تم إكمال جميع أذكار هذا الورد المبارك 🌿', 'success');
+    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    showToast('هنيئاً لك! تم إتمام جميع أذكار هذا الورد المبارك 🌿', 'success');
   }
 }
 
@@ -1164,7 +1252,7 @@ function playSyntheticClick() {
 }
 
 /* ==========================================================================
-   4. السبحة الإلكترونية الذكية (Digital Tasbeeh)
+   4. السبحة الإلكترونية الذكية المطورة (Digital Tasbeeh)
    ========================================================================== */
 const TASBEEH_PRESETS = [
   'سبحان الله',
@@ -1174,37 +1262,59 @@ const TASBEEH_PRESETS = [
   'أستغفر الله العظيم وأتوب إليه',
   'سبحان الله وبحمده، سبحان الله العظيم',
   'لا حول ولا قوة إلا بالله العلي العظيم',
-  'اللهم صل وسلم على نبينا محمد'
+  'اللهم صلِّ وسلم على نبينا محمد'
 ];
 
 let tasbeehCount = 0;
 let tasbeehTarget = ls('tasbeeh_target', 33);
 let tasbeehTotalLifetime = ls('tasbeeh_total', 0);
+let tasbeehRounds = ls('tasbeeh_rounds', 0);
 let tasbeehCurrentDhikr = ls('tasbeeh_dhikr', TASBEEH_PRESETS[0]);
+let tasbeehSoundEnabled = ls('tasbeeh_sound', true);
+let tasbeehVibrateEnabled = ls('tasbeeh_vibrate', true);
 
 function openTasbeehView() {
   setSubViewTitle('<i class="fa-solid fa-circle-dot" style="color:var(--accent)"></i> السبحة الإلكترونية');
 
+  // حساب محيط دائرة التقدم (r = 85 => circumference = 2 * PI * 85 ≈ 534)
+  const circumference = 2 * Math.PI * 85;
+  const progressRatio = tasbeehTarget > 0 ? Math.min(1, tasbeehCount / tasbeehTarget) : 0;
+  const strokeOffset = circumference - (progressRatio * circumference);
+
   const html = `
     <div class="max-w-xl mx-auto space-y-5">
-      <!-- اختيار الذكر -->
-      <div class="card p-4">
-        <label class="block text-xs font-bold mb-1.5" style="color:var(--text-muted)">اختر صيغة الذكر أو اكتب ذكراً مخصصاً:</label>
-        <div class="flex gap-2">
-          <select id="tasbeehDhikrSelect" class="inp flex-1 text-sm font-bold" onchange="changeTasbeehDhikr(this.value)">
-            ${TASBEEH_PRESETS.map(p => `
-              <option value="${p}" ${p === tasbeehCurrentDhikr ? 'selected' : ''}>${p}</option>
-            `).join('')}
-          </select>
+      <!-- شريط الأذكار السريعة بالأعلى بنقرة واحدة -->
+      <div class="card p-3.5">
+        <label class="block text-xs font-bold mb-2" style="color:var(--text-muted)">اختر صيغة الذكر بنقرة واحدة:</label>
+        <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+          ${TASBEEH_PRESETS.map(p => `
+            <button onclick="changeTasbeehDhikr('${p}')" class="pill text-xs py-1.5 px-3 whitespace-nowrap font-bold ${p === tasbeehCurrentDhikr ? 'active' : ''}">
+              ${p}
+            </button>
+          `).join('')}
         </div>
       </div>
 
-      <!-- قرص التسبيح الكبير -->
-      <div class="card p-6 sm:p-10 text-center relative overflow-hidden flex flex-col items-center">
-        <div class="text-sm font-semibold mb-2" style="color:var(--text-muted)">
-          المجموع الكلي المسبح: <b id="tasbeehTotalDisplay" class="font-mono text-base" style="color:var(--accent)">${toAr(tasbeehTotalLifetime)}</b>
+      <!-- لوحة التسبيح التفاعلية المتطورة -->
+      <div class="card p-6 sm:p-8 text-center relative overflow-hidden flex flex-col items-center">
+        <!-- الذكر المختار بخط كبير -->
+        <div class="font-amiri text-2xl sm:text-3xl font-extrabold mb-4 select-none" style="color:var(--accent)">
+          «${tasbeehCurrentDhikr}»
         </div>
 
+        <!-- إحصائيات التسبيح -->
+        <div class="grid grid-cols-2 gap-3 w-full max-w-sm mb-6 text-xs font-bold">
+          <div class="p-2.5 rounded-xl border flex flex-col items-center" style="border-color:var(--border-color); background:var(--accent-soft)">
+            <span style="color:var(--text-muted)">الدورات المكتملة:</span>
+            <span id="tasbeehRoundsDisplay" class="font-mono text-base font-extrabold mt-0.5">${toAr(tasbeehRounds)}</span>
+          </div>
+          <div class="p-2.5 rounded-xl border flex flex-col items-center" style="border-color:var(--border-color); background:var(--accent-soft)">
+            <span style="color:var(--text-muted)">إجمالي التسبيحات:</span>
+            <span id="tasbeehTotalDisplay" class="font-mono text-base font-extrabold mt-0.5" style="color:var(--accent)">${toAr(tasbeehTotalLifetime)}</span>
+          </div>
+        </div>
+
+        <!-- اختيار الهدف -->
         <div class="flex items-center gap-2 mb-6">
           <span class="text-xs font-bold" style="color:var(--text-muted)">الهدف:</span>
           ${[33, 100, 1000].map(t => `
@@ -1212,18 +1322,36 @@ function openTasbeehView() {
               ${toAr(t)}
             </button>
           `).join('')}
+          <button onclick="setTasbeehTarget(0)" class="pill text-xs py-1 px-3 ${tasbeehTarget === 0 ? 'active' : ''}">
+            حر (مفتوح)
+          </button>
         </div>
 
-        <!-- زر النقر التفاعلي الكبير -->
-        <button id="tasbeehBigButton" onclick="onTasbeehClick()" class="hero-box w-48 h-48 sm:w-60 sm:h-60 rounded-full flex flex-col items-center justify-center shadow-2xl active:scale-95 transition transform duration-150 border-4 border-white/20 select-none">
-          <span id="tasbeehMainCounter" class="text-6xl sm:text-7xl font-extrabold font-mono tracking-tighter">
-            ${toAr(tasbeehCount)}
-          </span>
-          <span class="text-xs text-white/80 mt-1">انقر للتسبيح</span>
-        </button>
+        <!-- قرص التسبيح الكبير المحاط بحلقة التقدم الدائرية SVG -->
+        <div class="relative w-56 h-56 sm:w-64 sm:h-64 flex items-center justify-center my-2 select-none cursor-pointer" onclick="onTasbeehClick()">
+          <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="85" fill="none" stroke="var(--border-color)" stroke-width="8" opacity="0.4" />
+            <circle id="tasbeehProgressCircle" cx="100" cy="100" r="85" fill="none" stroke="var(--accent)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${strokeOffset}" class="transition-all duration-150" />
+          </svg>
 
-        <div class="mt-6 flex items-center gap-3">
-          <button onclick="resetTasbeehCounter()" class="pill text-sm py-2 px-5 hover:border-rose-500">
+          <!-- زر النقر التفاعلي المركزي -->
+          <div id="tasbeehBigButton" class="hero-box w-44 h-44 sm:w-52 sm:h-52 rounded-full flex flex-col items-center justify-center shadow-2xl active:scale-95 transition transform duration-150 border-4 border-white/20">
+            <span id="tasbeehMainCounter" class="text-6xl sm:text-7xl font-extrabold font-mono tracking-tighter">
+              ${toAr(tasbeehCount)}
+            </span>
+            <span class="text-xs text-white/80 mt-1 font-semibold">انقر للتسبيح</span>
+          </div>
+        </div>
+
+        <!-- أدوات التحكم السفلية (صوت، اهتزاز، تصفير) -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button onclick="toggleTasbeehSound()" id="tasbeehSoundBtn" class="pill text-xs py-1.5 px-3">
+            <i class="fa-solid ${tasbeehSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'} ml-1"></i> ${tasbeehSoundEnabled ? 'الصوت: مفعل' : 'صامت'}
+          </button>
+          <button onclick="toggleTasbeehVibrate()" id="tasbeehVibrateBtn" class="pill text-xs py-1.5 px-3">
+            <i class="fa-solid ${tasbeehVibrateEnabled ? 'fa-mobile-screen' : 'fa-mobile-screen-button text-slate-400'} ml-1"></i> ${tasbeehVibrateEnabled ? 'الاهتزاز: مفعل' : 'الاهتزاز: معطل'}
+          </button>
+          <button onclick="resetTasbeehCounter()" class="pill text-xs py-1.5 px-3 hover:border-rose-500 font-bold">
             <i class="fa-solid fa-rotate-right ml-1"></i> تصفير الدورة
           </button>
         </div>
@@ -1237,6 +1365,7 @@ function openTasbeehView() {
 function changeTasbeehDhikr(val) {
   tasbeehCurrentDhikr = val;
   sv('tasbeeh_dhikr', val);
+  openTasbeehView();
 }
 
 function setTasbeehTarget(t) {
@@ -1245,33 +1374,72 @@ function setTasbeehTarget(t) {
   openTasbeehView();
 }
 
+function toggleTasbeehSound() {
+  tasbeehSoundEnabled = !tasbeehSoundEnabled;
+  sv('tasbeeh_sound', tasbeehSoundEnabled);
+  const btn = $('#tasbeehSoundBtn');
+  if (btn) btn.innerHTML = `<i class="fa-solid ${tasbeehSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'} ml-1"></i> ${tasbeehSoundEnabled ? 'الصوت: مفعل' : 'صامت'}`;
+}
+
+function toggleTasbeehVibrate() {
+  tasbeehVibrateEnabled = !tasbeehVibrateEnabled;
+  sv('tasbeeh_vibrate', tasbeehVibrateEnabled);
+  const btn = $('#tasbeehVibrateBtn');
+  if (btn) btn.innerHTML = `<i class="fa-solid ${tasbeehVibrateEnabled ? 'fa-mobile-screen' : 'fa-mobile-screen-button text-slate-400'} ml-1"></i> ${tasbeehVibrateEnabled ? 'الاهتزاز: مفعل' : 'الاهتزاز: معطل'}`;
+}
+
 function onTasbeehClick() {
   tasbeehCount++;
   tasbeehTotalLifetime++;
   sv('tasbeeh_total', tasbeehTotalLifetime);
 
-  playSyntheticClick();
-  if (navigator.vibrate) navigator.vibrate(40);
+  if (tasbeehSoundEnabled) playSyntheticClick();
+  if (tasbeehVibrateEnabled && navigator.vibrate) navigator.vibrate(40);
 
   const mainCounter = $('#tasbeehMainCounter');
   const totalDisplay = $('#tasbeehTotalDisplay');
+  const progressCircle = $('#tasbeehProgressCircle');
+
   if (mainCounter) mainCounter.textContent = toAr(tasbeehCount);
   if (totalDisplay) totalDisplay.textContent = toAr(tasbeehTotalLifetime);
 
-  if (tasbeehCount >= tasbeehTarget) {
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-    showToast(`أحسنت! أتممت دورة التسبيح (${toAr(tasbeehTarget)}) بنجاح ✓`, 'success');
+  // تحديث حلقة التقدم الدائرية
+  if (progressCircle && tasbeehTarget > 0) {
+    const circumference = 2 * Math.PI * 85;
+    const ratio = Math.min(1, tasbeehCount / tasbeehTarget);
+    progressCircle.style.strokeDashoffset = circumference - (ratio * circumference);
+  }
+
+  // اكتمال الهدف
+  if (tasbeehTarget > 0 && tasbeehCount >= tasbeehTarget) {
+    tasbeehRounds++;
+    sv('tasbeeh_rounds', tasbeehRounds);
+    const roundsDisplay = $('#tasbeehRoundsDisplay');
+    if (roundsDisplay) roundsDisplay.textContent = toAr(tasbeehRounds);
+
+    if (tasbeehVibrateEnabled && navigator.vibrate) navigator.vibrate([100, 50, 100]);
+    showToast(`أحسنت! أتممت الدورة (${toAr(tasbeehTarget)}) بنجاح 🌿`, 'success');
+    
     tasbeehCount = 0;
     setTimeout(() => {
       if (mainCounter) mainCounter.textContent = toAr(0);
-    }, 400);
+      if (progressCircle) {
+        const circumference = 2 * Math.PI * 85;
+        progressCircle.style.strokeDashoffset = circumference;
+      }
+    }, 450);
   }
 }
 
 function resetTasbeehCounter() {
   tasbeehCount = 0;
   const mainCounter = $('#tasbeehMainCounter');
+  const progressCircle = $('#tasbeehProgressCircle');
   if (mainCounter) mainCounter.textContent = toAr(0);
+  if (progressCircle) {
+    const circumference = 2 * Math.PI * 85;
+    progressCircle.style.strokeDashoffset = circumference;
+  }
   showToast('تم تصفير عداد الدورة الحالية', 'info');
 }
 
@@ -2471,6 +2639,87 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+/* نافذة المطور وعن التطبيق (About & Developer Modal) */
+function openAboutModal() {
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div class="card p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto shadow-2xl relative text-right" dir="rtl" style="background-color: var(--bg-card); border-color: var(--border-color);">
+      <!-- زر الإغلاق -->
+      <button onclick="this.closest('.fixed').remove()" class="absolute left-4 top-4 pill !p-1.5 text-xs" title="إغلاق">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <!-- رأس البطاقة: الصورة الرمزية والاسم -->
+      <div class="flex items-center gap-3.5 mb-4 pt-1">
+        <div class="w-14 h-14 rounded-full flex items-center justify-center text-white font-extrabold text-xl shadow-md shrink-0" style="background: var(--accent);">
+          KA
+        </div>
+        <div>
+          <h3 class="font-black text-lg" style="color: var(--text-primary)">Karim Ali</h3>
+          <p class="text-xs font-semibold" style="color: var(--accent)">مطور تطبيق رفيق المسلم</p>
+        </div>
+      </div>
+
+      <!-- قائمة التواصل مع أزرار النسخ -->
+      <div class="space-y-2 mb-4 text-xs font-mono" dir="ltr">
+        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2" style="border-color: var(--border-color); background: var(--accent-soft)">
+          <div class="flex items-center gap-2 truncate text-slate-800 dark:text-slate-200">
+            <i class="fa-regular fa-envelope text-sm" style="color: var(--accent)"></i>
+            <span class="truncate font-sans">karimali12qw@gmail.com</span>
+          </div>
+          <button onclick="copyText('karimali12qw@gmail.com')" class="pill text-xs py-1 px-2.5 shrink-0">
+            Copy
+          </button>
+        </div>
+
+        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2" style="border-color: var(--border-color); background: var(--accent-soft)">
+          <div class="flex items-center gap-2 truncate text-slate-800 dark:text-slate-200">
+            <i class="fa-solid fa-phone text-sm text-emerald-500"></i>
+            <span class="truncate font-sans">01116009359</span>
+          </div>
+          <button onclick="copyText('01116009359')" class="pill text-xs py-1 px-2.5 shrink-0">
+            Copy
+          </button>
+        </div>
+
+        <div class="p-2.5 rounded-xl border flex items-center justify-between gap-2" style="border-color: var(--border-color); background: var(--accent-soft)">
+          <div class="flex items-center gap-2 truncate text-slate-800 dark:text-slate-200">
+            <i class="fa-brands fa-linkedin text-sm text-blue-500"></i>
+            <span class="truncate font-sans">LinkedIn: Karim Ali</span>
+          </div>
+          <button onclick="copyText('Karim Ali')" class="pill text-xs py-1 px-2.5 shrink-0">
+            Copy
+          </button>
+        </div>
+      </div>
+
+      <!-- زر إرسال ملاحظات -->
+      <a href="mailto:karimali12qw@gmail.com?subject=ملاحظات واقتراحات حول تطبيق رفيق المسلم" class="btn-accent w-full py-2.5 text-center text-xs font-bold mb-4 shadow-md flex items-center justify-center gap-2 rounded-xl">
+        <i class="fa-regular fa-paper-plane"></i>
+        <span>Send feedback (إرسال ملاحظات)</span>
+      </a>
+
+      <!-- صندوق عن التطبيق والإهداء -->
+      <div class="p-3.5 rounded-xl border text-xs leading-relaxed space-y-2 text-justify" style="border-color: var(--border-color); background: color-mix(in srgb, var(--accent) 5%, var(--bg-card))">
+        <div class="font-bold flex items-center gap-1.5" style="color: var(--text-primary)">
+          <i class="fa-solid fa-circle-info" style="color: var(--accent)"></i>
+          <span>عن تطبيق رفيق المسلم:</span>
+        </div>
+        <p style="color: var(--text-muted)">
+          تطبيق إسلامي شامل للعبادة والذكر اليومي، يضم مواقيت الصلاة والأذان التفاعلي، القرآن الكريم، أذكار الصباح والمساء، التلاوات الصوتية، والسبحة.
+        </p>
+        <div class="p-2.5 rounded-lg border border-amber-300/50 bg-amber-500/10 text-amber-900 dark:text-amber-200 font-semibold leading-relaxed text-center">
+          🤲 <b>صدقة جارية</b> على أرواح مواتانا وموتى المسلمين جميعاً، فنسألكم خالص الدعاء لهم بالرحمة والمغفرة وقراءة الفاتحة.
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
 /* ==========================================================================
    بدء تشغيل التطبيق (Bootstrapping)
    ========================================================================== */
@@ -2480,7 +2729,14 @@ window.addEventListener('DOMContentLoaded', () => {
   initCitiesDropdown();
   initQuickAdhkarBar();
   initMainModulesGrid();
-  loadPrayerTimes();
+  
+  // طلب إذن الموقع تلقائياً في أول فتح للتطبيق
+  if (!ls('loc', null)) {
+    detectGPS(true);
+  } else {
+    loadPrayerTimes();
+  }
+
   fetchRandomAyah();
   fetchRandomHadith();
 

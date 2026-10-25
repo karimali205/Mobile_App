@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rafiq-almuslim-v2';
+const CACHE_NAME = 'rafiq-almuslim-v4';
 const STATIC_ASSETS = [
   './',
   './index.html',
