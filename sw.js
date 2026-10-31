@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rafiq-almuslim-v9';
+const CACHE_NAME = 'rafiq-almuslim-v11';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -34,6 +34,40 @@ self.addEventListener('activate', (e) => {
     })
   );
   self.clients.claim();
+});
+
+// التعامل مع النقر على الإشعارات وفتح التطبيق فورياً
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || './index.html';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// استقبال طلب إرسال إشعار من الصفحة والتطبيق
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, options } = event.data;
+    self.registration.showNotification(title, {
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      vibrate: [200, 100, 200, 100, 200],
+      dir: 'rtl',
+      lang: 'ar',
+      ...options
+    });
+  }
 });
 
 // استراتيجية التشغيل الفوري (Stale-While-Revalidate / Cache First للأصول الثابتة)

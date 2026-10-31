@@ -21,9 +21,14 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Amiri:ital,wght@0,400;0,700;1,400&family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
+@font-face {
+  font-family: 'UthmanicHafs';
+  src: url('https://quran.com/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.woff2') format('woff2');
+  font-display: swap;
+}
 /* 1. نظام الثيمات الأربعة */
 [data-theme="crimson"] {
   --bg-primary: #F8FAFC;
@@ -153,10 +158,27 @@ body {
 }
 
 .quran-verse {
-  font-family: 'Amiri', serif;
-  font-size: 1.75rem;
-  line-height: 2.5;
+  font-family: 'UthmanicHafs', 'Amiri Quran', 'Amiri', serif;
+  font-size: 1.85rem;
+  line-height: 2.7;
   text-align: justify;
+  text-justify: inter-word;
+  word-spacing: 2px;
+}
+.mushaf-page-img {
+  width: 100%;
+  max-width: 600px;
+  height: auto;
+  margin: 0 auto;
+  display: block;
+  border-radius: 0.75rem;
+  transition: filter 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* فلتر الوضع الليلي الذكي لصفحات المصحف الشريف المصورة */
+.dark .mushaf-page-img {
+  filter: invert(0.92) hue-rotate(180deg) brightness(1.05) contrast(1.1);
 }
 .ayah-num {
   display: inline-flex;
@@ -192,6 +214,23 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* تأثيرات الاحتفال والرسائل التحفيزية */
+@keyframes floatUp {
+  0% { transform: translateY(22px) scale(0.92); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes sparkleRotate {
+  0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.85; }
+  50% { transform: scale(1.3) rotate(180deg); opacity: 1; }
+}
+.celebrate-card {
+  animation: floatUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.sparkle-icon {
+  display: inline-block;
+  animation: sparkleRotate 2.2s infinite ease-in-out;
+}
 </style>
 </head>
 <body class="selection:bg-rose-500 selection:text-white" style="padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); padding-top: env(safe-area-inset-top, 0px);">
@@ -284,16 +323,22 @@ body {
 
       <div class="flex flex-wrap items-center justify-between gap-3 text-xs opacity-90 pt-2">
         <div class="flex items-center gap-2">
-          <span>طريقة الحساب: الهيئة العامة المصرية للمساحة</span>
+          <span>طريقة الحساب: الهيئة العامة المصرية</span>
           <button onclick="toggleCalcSettings()" class="underline hover:opacity-100">تعديل</button>
         </div>
         <div class="flex items-center gap-3">
+          <button onclick="openNotificationSettingsModal()" class="hover:underline flex items-center gap-1.5 font-bold">
+            <i class="fa-solid fa-bell text-amber-300"></i> ضبط التنبيهات
+          </button>
           <button onclick="toggleAudioMute()" id="audioMuteBtn" class="hover:underline flex items-center gap-1.5">
-            <i class="fa-solid fa-volume-high"></i> صوت الأذان والتنبيهات: مفعل
+            <i class="fa-solid fa-volume-high"></i> صوت الأذان: مفعل
           </button>
         </div>
       </div>
     </div>
+
+    <!-- كارت تفعيل التنبيهات الذكي في الصفحة الرئيسية -->
+    <div id="homeNotificationBanner"></div>
 
     <!-- بطاقة جدول مواقيت اليوم + التنقل بالأيام -->
     <div class="card p-5 mb-6">
@@ -315,12 +360,15 @@ body {
         <!-- يتم إنشاؤه عبر JS -->
       </div>
 
-      <div class="mt-4 pt-3 border-t flex flex-wrap items-center justify-between text-xs" style="border-color: var(--border-color); color: var(--text-muted)">
+      <div class="mt-4 pt-3 border-t flex flex-wrap items-center justify-between gap-2 text-xs" style="border-color: var(--border-color); color: var(--text-muted)">
         <div class="flex items-center gap-2">
           <i class="fa-solid fa-bell text-amber-500"></i>
-          <span>يمكنك تفعيل تنبيهات الصلاة (قبل الأذان بـ 10د، عند الأذان، بعد الأذان) بالنقر على أيقونة الجرس.</span>
+          <span>تنبيهات الصلوات الخمس والمهام اليومية:</span>
+          <button onclick="openNotificationSettingsModal()" class="underline font-bold" style="color: var(--accent)">
+            إعدادات التنبيهات
+          </button>
         </div>
-        <button onclick="testAdhanAudio()" class="underline font-semibold mt-1 sm:mt-0" style="color: var(--accent)">
+        <button onclick="testAdhanAudio()" class="underline font-semibold" style="color: var(--accent)">
           <i class="fa-solid fa-circle-play ml-1"></i> تجربة صوت الأذان
         </button>
       </div>
@@ -630,7 +678,23 @@ let userLocation = ls('loc', null) || { name: 'جاري تحديد موقعك...
 let currentDayOffset = 0;
 let todayTimingsData = null;
 let displayedTimingsData = null;
-let notificationSettings = ls('notifs', {}); // { 'Fajr_before': true, 'Fajr_at': true ... }
+// الإعدادات الذكية للتنبيهات (الصلوات الخمس والمهام مفعلة افتراضياً بمجرد إعطاء الصلاحية)
+function getSmartNotificationSettings() {
+  const defaults = {
+    master_prayers: true,
+    Fajr_at: true,
+    Dhuhr_at: true,
+    Asr_at: true,
+    Maghrib_at: true,
+    Isha_at: true,
+    Sunrise_a: true,
+    tasks_enabled: true
+  };
+  const saved = ls('notifs', null);
+  if (!saved) return defaults;
+  return { ...defaults, ...saved };
+}
+let notificationSettings = getSmartNotificationSettings();
 let prayerDoneStatus = ls('prayers_done', {}); // { '2026-10-24_Fajr': true }
 let audioMuted = ls('audio_muted', false);
 let calculationMethod = ls('calc_method', 5); // 5 = Egyptian General Authority of Survey
@@ -845,6 +909,11 @@ function togglePrayerDone(dateKey, prayerId) {
   const targetDate = new Date();
   targetDate.setDate(targetDate.getDate() + currentDayOffset);
   renderPrayerTimesGrid(targetDate, displayedTimingsData);
+
+  if (prayerDoneStatus[k]) {
+    const prayer = PRAYERS_LIST.find(p => p.id === prayerId);
+    showMotivationalCelebration('prayer', prayer ? `صلاة ${prayer.name}` : 'الصلاة المفروضة');
+  }
 }
 
 function toggleNotification(prayerId, timingType) {
@@ -853,7 +922,7 @@ function toggleNotification(prayerId, timingType) {
   sv('notifs', notificationSettings);
 
   if (notificationSettings[key] && window.Notification && Notification.permission !== 'granted') {
-    Notification.requestPermission();
+    requestNotificationPermissionPrompt(false);
   }
 
   const targetDate = new Date();
@@ -910,13 +979,73 @@ function playSyntheticTone() {
   } catch (e) {}
 }
 
-// تشغيل تنبيه للمستخدم
-function triggerAlert(title, message) {
-  playAdhanSound();
-  if (window.Notification && Notification.permission === 'granted') {
-    new Notification(title, { body: message, icon: 'https://cdn-icons-png.flaticon.com/512/2917/2917995.png' });
+// تشغيل التنبيه المباشر والإشعار المتوافق تماماً مع نظام أندرويد و PWA
+async function triggerAlert(title, message, isAdhan = true) {
+  if (isAdhan && !audioMuted) {
+    playAdhanSound();
+  } else if (!isAdhan) {
+    playSyntheticTone();
   }
+
+  // إرسال الإشعار عبر Service Worker (وهي الطريقة الإلزامية التي تعمل على هواتف أندرويد)
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try {
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        if (reg && reg.showNotification) {
+          reg.showNotification(title, {
+            body: message,
+            icon: './icon-192.png',
+            badge: './icon-192.png',
+            vibrate: [200, 100, 200, 100, 200],
+            tag: 'islamic-alert-' + Date.now(),
+            renotify: true,
+            data: { url: './index.html' }
+          });
+        } else {
+          new Notification(title, { body: message, icon: './icon-192.png' });
+        }
+      } else {
+        new Notification(title, { body: message, icon: './icon-192.png' });
+      }
+    } catch (e) {
+      console.warn('SW notification fallback:', e);
+      try {
+        new Notification(title, { body: message, icon: './icon-192.png' });
+      } catch (err) {}
+    }
+  }
+
   showToast(`🔔 ${title}: ${message}`, 'info');
+}
+
+// فحص تذكيرات المهام والأذكار اليومية الدورية
+function checkDailyTaskReminders(now, todayDateStr) {
+  if (!notificationSettings['tasks_enabled']) return;
+
+  const currentHour = now.getHours();
+  const currentMin = now.getMinutes();
+
+  // 1. تذكير أذكار الصباح وتحدي اليوم (الساعة 7:30 صباحاً)
+  const sabahAlertId = `${todayDateStr}_task_sabah`;
+  if (currentHour === 7 && currentMin === 30 && !firedAlertsThisDay.has(sabahAlertId)) {
+    firedAlertsThisDay.add(sabahAlertId);
+    triggerAlert('أذكار الصباح المباركة ☀️', 'أصبحنا وأصبح الملك لله.. ابدأ يومك بذكر الله وتحدي اليوم في رفيق المسلم 🌿', false);
+  }
+
+  // 2. تذكير أذكار المساء (الساعة 5:00 مساءً)
+  const masaAlertId = `${todayDateStr}_task_masa`;
+  if (currentHour === 17 && currentMin === 0 && !firedAlertsThisDay.has(masaAlertId)) {
+    firedAlertsThisDay.add(masaAlertId);
+    triggerAlert('أذكار المساء وورد القرآن 🌙', 'أمسينا وأمسى الملك لله.. حصّن نفسك بأذكار المساء واقرأ وردك القرآني 🌸', false);
+  }
+
+  // 3. تذكير صلاة الوتر وأذكار النوم (الساعة 10:30 مساءً)
+  const witrAlertId = `${todayDateStr}_task_witr`;
+  if (currentHour === 22 && currentMin === 30 && !firedAlertsThisDay.has(witrAlertId)) {
+    firedAlertsThisDay.add(witrAlertId);
+    triggerAlert('صلاة الوتر وأذكار النوم 💫', 'لا تنم حتى توتر وتختم يومك بذكر الله وركعة تضيء لك ظلمة القبر 🤲', false);
+  }
 }
 
 // مؤقت العد التنازلي التفاعلي المباشر
@@ -1013,6 +1142,9 @@ function tickPrayerCountdown() {
       }
     }
   });
+
+  // فحص تذكيرات المهام والأذكار اليومية
+  checkDailyTaskReminders(now, todayDateStr);
 }
 setInterval(tickPrayerCountdown, 1000);
 
@@ -1265,8 +1397,8 @@ function decrementDhikrCounter(idx) {
   $('#adhkarCategoryProgressBar').style.width = percent + '%';
 
   if (finishedCount === currentCategoryAdhkar.length) {
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-    showToast('هنيئاً لك! تم إتمام جميع أذكار هذا الورد المبارك 🌿', 'success');
+    const cat = ADHKAR_CATEGORIES.find(c => c.id === currentOpenCatId);
+    showMotivationalCelebration('adhkar', cat ? cat.name : 'الورد المبارك', true);
     markAdhkarTaskAutoDone(currentOpenCatId);
   }
 }
@@ -1498,8 +1630,7 @@ function onTasbeehClick() {
     const roundsDisplay = $('#tasbeehRoundsDisplay');
     if (roundsDisplay) roundsDisplay.textContent = toAr(tasbeehRounds);
 
-    if (tasbeehVibrateEnabled && navigator.vibrate) navigator.vibrate([100, 50, 100]);
-    showToast(`أحسنت! أتممت الدورة (${toAr(tasbeehTarget)}) بنجاح 🌿`, 'success');
+    showMotivationalCelebration('tasbeeh', `${toAr(tasbeehTarget)} تسبيحة`);
 
     if (tasbeehTarget === 100 || (tasbeehRounds * tasbeehTarget) >= 99) {
       markTasbeehTaskAutoDone();
@@ -1573,6 +1704,109 @@ const QURAN_JUZ_DATA = [
   { juz: 30, name: 'عم يتساءلون', surah: 78, surahName: 'النبأ', ayah: 1, page: 582 }
 ];
 
+// أرقام صفحات بداية كل سورة من سور القرآن الـ 114 وفق مصحف المدينة المنورة
+const SURAH_START_PAGES = [
+  1, 2, 50, 77, 106, 128, 151, 177, 187, 208, 
+  221, 235, 249, 255, 262, 267, 282, 293, 305, 312, 
+  322, 332, 342, 350, 359, 367, 377, 385, 396, 404, 
+  411, 415, 418, 428, 434, 440, 446, 453, 458, 467, 
+  477, 483, 489, 496, 499, 502, 507, 511, 515, 518, 
+  520, 523, 526, 528, 531, 534, 537, 542, 545, 549, 
+  551, 553, 554, 556, 558, 560, 562, 564, 566, 568, 
+  570, 572, 574, 575, 577, 578, 580, 582, 583, 585, 
+  586, 587, 587, 589, 590, 591, 591, 592, 593, 594, 
+  595, 595, 596, 596, 597, 597, 598, 598, 599, 599, 
+  600, 600, 601, 601, 601, 602, 602, 602, 603, 603, 
+  603, 604, 604, 604
+];
+
+// دوال مساعدة لحساب السورة والجزء من رقم الصفحة
+function getSurahNumberForPage(pageNum) {
+  for (let i = SURAH_START_PAGES.length - 1; i >= 0; i--) {
+    if (pageNum >= SURAH_START_PAGES[i]) return i + 1;
+  }
+  return 1;
+}
+
+function getJuzForPage(pageNum) {
+  for (let i = QURAN_JUZ_DATA.length - 1; i >= 0; i--) {
+    if (pageNum >= QURAN_JUZ_DATA[i].page) return QURAN_JUZ_DATA[i].juz;
+  }
+  return 1;
+}
+
+// التبديل بين وضع مصحف المدينة (صفحات مصورة) ووضع الرسم العثماني (نص)
+function setQuranViewMode(mode) {
+  sv('quran_view_mode', mode);
+  showToast(mode === 'mushaf' ? 'تم اختيار مصحف المدينة المنورة (صفحات مصورة) 📖' : 'تم اختيار الرسم العثماني التفاعلي (نص) 📝', 'info');
+  openQuranModule(false);
+}
+
+// فتح السورة وفق النمط المفضل للمستخدم (مصحف المدينة كافتراضي)
+function openSurahOrPage(surahNum) {
+  const mode = ls('quran_view_mode', 'mushaf');
+  if (mode === 'mushaf') {
+    const page = SURAH_START_PAGES[surahNum - 1] || 1;
+    readQuranPage(page);
+  } else {
+    readSurah(surahNum);
+  }
+}
+
+// فتح الجزء وفق النمط المفضل
+function openJuzOrPage(juzNum) {
+  const j = QURAN_JUZ_DATA.find(x => x.juz === juzNum);
+  if (!j) return;
+  const mode = ls('quran_view_mode', 'mushaf');
+  if (mode === 'mushaf') {
+    readQuranPage(j.page);
+  } else {
+    readSurah(j.surah, j.ayah);
+  }
+}
+
+// استئناف قراءة القرآن الكريم من آخر موضع وقوف
+function resumeQuranReading() {
+  const bookmark = ls('quran_bookmark', null);
+  const mode = ls('quran_view_mode', 'mushaf');
+  if (!bookmark) {
+    if (mode === 'mushaf') readQuranPage(1);
+    else readSurah(1);
+    return;
+  }
+  if (bookmark.page) {
+    if (mode === 'mushaf') {
+      readQuranPage(bookmark.page);
+    } else {
+      readSurah(bookmark.surahNumber, bookmark.ayahNumber || 1);
+    }
+  } else {
+    if (mode === 'mushaf') {
+      const page = SURAH_START_PAGES[bookmark.surahNumber - 1] || 1;
+      readQuranPage(page);
+    } else {
+      readSurah(bookmark.surahNumber, bookmark.ayahNumber || 1);
+    }
+  }
+}
+
+// حفظ علامة الوقوف الحالية عند الصفحة
+function saveBookmarkForCurrentPage(pageNum, surahNum, surahName) {
+  const bookmark = {
+    page: pageNum,
+    surahNumber: surahNum,
+    surahName: surahName,
+    ayahNumber: 1,
+    ayahText: `صفحة ${toAr(pageNum)} من مصحف المدينة المنورة`,
+    date: new Date().toISOString(),
+    timestamp: Date.now()
+  };
+  sv('quran_bookmark', bookmark);
+  showMotivationalCelebration('quran', `صفحة ${toAr(pageNum)} • سورة ${surahName}`);
+  readQuranPage(pageNum, false);
+  renderHomeQuranBookmarkCard();
+}
+
 // أداة تنظيف النصوص العربية للبحث (إزالة التشكيل وتوحيد الألفات والهمزات)
 function cleanArabicText(str) {
   if (!str) return '';
@@ -1622,7 +1856,7 @@ function renderQuranHeroBookmarkCard(bookmark) {
           <button onclick="deleteQuranBookmark()" class="pill text-xs py-2 px-3 text-rose-500 hover:bg-rose-500/10" title="إزالة العلامة">
             <i class="fa-solid fa-trash-can"></i>
           </button>
-          <button onclick="readSurah(${bookmark.surahNumber}, ${bookmark.ayahNumber})" class="btn-accent text-xs py-2 px-5 font-bold shadow-md flex items-center gap-2">
+          <button onclick="resumeQuranReading()" class="btn-accent text-xs py-2 px-5 font-bold shadow-md flex items-center gap-2">
             <i class="fa-solid fa-book-open"></i>
             <span>متابعة القراءة الآن</span>
             <i class="fa-solid fa-arrow-left text-[10px]"></i>
@@ -1666,7 +1900,7 @@ function renderHomeQuranBookmarkCard() {
         </div>
       </div>
       <div class="flex items-center gap-2 w-full sm:w-auto justify-end pt-1 sm:pt-0">
-        <button onclick="readSurah(${bookmark.surahNumber}, ${bookmark.ayahNumber})" class="btn-accent text-xs py-2 px-4 shadow-sm font-bold flex items-center gap-1.5 w-full sm:w-auto justify-center">
+        <button onclick="resumeQuranReading()" class="btn-accent text-xs py-2 px-4 shadow-sm font-bold flex items-center gap-1.5 w-full sm:w-auto justify-center">
           <i class="fa-solid fa-book-open"></i>
           <span>واصل القراءة</span>
           <i class="fa-solid fa-arrow-left text-[10px]"></i>
@@ -1683,11 +1917,31 @@ async function openQuranModule(pushState = true) {
   currentReadingPage = null;
 
   const bookmark = ls('quran_bookmark', null);
+  const currentMode = ls('quran_view_mode', 'mushaf');
 
   const html = `
     <!-- كارت العلامة المرجعية البارز -->
     <div id="quranHeroBookmarkWrap">
       ${bookmark ? renderQuranHeroBookmarkCard(bookmark) : ''}
+    </div>
+
+    <!-- محدد وضع العرض (مصحف المدينة المنورة صفحات مصورة / الرسم العثماني) -->
+    <div class="flex items-center justify-between p-2.5 rounded-2xl border mb-4 text-xs font-bold" style="background:var(--accent-soft); border-color:var(--border-color)">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-book-open" style="color:var(--accent)"></i>
+        <span class="hidden sm:inline">طريقة العرض عند فتح أي سورة:</span>
+        <span class="sm:hidden">طريقة العرض:</span>
+      </div>
+      <div class="flex items-center gap-1 bg-black/5 dark:bg-white/5 p-1 rounded-xl">
+        <button onclick="setQuranViewMode('mushaf')" class="px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1 ${currentMode === 'mushaf' ? 'bg-accent text-white shadow-xs font-black' : 'opacity-70'}">
+          <i class="fa-solid fa-file-image"></i>
+          <span>مصحف المدينة</span>
+        </button>
+        <button onclick="setQuranViewMode('text')" class="px-2.5 py-1 rounded-lg transition text-xs flex items-center gap-1 ${currentMode === 'text' ? 'bg-accent text-white shadow-xs font-black' : 'opacity-70'}">
+          <i class="fa-solid fa-align-right"></i>
+          <span>رسم عثماني</span>
+        </button>
+      </div>
     </div>
 
     <!-- شريط التبويبات الأربعة (السور، الأجزاء، الصفحات، بحث الآيات) -->
@@ -1850,7 +2104,7 @@ function renderSurahsGrid(surahs) {
   container.innerHTML = surahs.map(s => {
     const isBookmarkedHere = bookmark && bookmark.surahNumber === s.number;
     return `
-      <div onclick="readSurah(${s.number})" class="card p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-400 transition hover:-translate-y-0.5 ${isBookmarkedHere ? 'border-amber-400 bg-amber-500/5' : ''}">
+      <div onclick="openSurahOrPage(${s.number})" class="card p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-400 transition hover:-translate-y-0.5 ${isBookmarkedHere ? 'border-amber-400 bg-amber-500/5' : ''}">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border" style="border-color:var(--border-color); color:var(--accent); background:var(--accent-soft)">
             ${toAr(s.number)}
@@ -1890,7 +2144,7 @@ function renderJuzGrid() {
   const container = $('#juzListGrid');
   if (!container) return;
   container.innerHTML = QURAN_JUZ_DATA.map(j => `
-    <div onclick="readSurah(${j.surah}, ${j.ayah})" class="card p-4 flex flex-col justify-between cursor-pointer hover:border-rose-400 transition hover:-translate-y-0.5">
+    <div onclick="openJuzOrPage(${j.juz})" class="card p-4 flex flex-col justify-between cursor-pointer hover:border-rose-400 transition hover:-translate-y-0.5">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-2.5">
           <div class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs border" style="border-color:var(--border-color); color:var(--accent); background:var(--accent-soft)">
@@ -1966,13 +2220,18 @@ function filterPagesByJuz(juz) {
   renderPagesGrid(juz);
 }
 
-// عرض صفحة المصحف بالتفصيل (Page Reader)
+// عرض صفحة المصحف الشريف المصورة (Madani Mushaf Page Reader)
 async function readQuranPage(pageNum, pushState = true) {
   pageNum = Math.max(1, Math.min(604, parseInt(pageNum) || 1));
   currentReadingPage = pageNum;
   currentReadingSurah = null;
 
-  setSubViewTitle(`<i class="fa-solid fa-book-open" style="color:var(--accent)"></i> صفحة ${toAr(pageNum)} من ٦٠٤`);
+  const pad = String(pageNum).padStart(3, '0');
+  const surahNum = getSurahNumberForPage(pageNum);
+  const surahName = SURAH_NAMES_AR[surahNum - 1] || '';
+  const juzNum = getJuzForPage(pageNum);
+
+  setSubViewTitle(`<i class="fa-solid fa-book-open" style="color:var(--accent)"></i> مصحف المدينة • ص ${toAr(pageNum)}`);
   const backText = $('#subViewBackBtnText');
   if (backText) backText.textContent = 'فهرس المصحف';
 
@@ -1980,117 +2239,205 @@ async function readQuranPage(pageNum, pushState = true) {
     history.pushState({ screen: 'quranPage', pageNum }, '');
   }
 
+  const bookmark = ls('quran_bookmark', null);
+  const isBookmarkedPage = bookmark && (bookmark.page === pageNum || (bookmark.surahNumber === surahNum && bookmark.page == null));
+
+  // روابط صور مصحف مجمع الملك فهد بالمدينة المنورة عالية الدقة (1260px)
+  const primaryImgUrl = `https://android.quran.com/data/width_1260/page${pad}.png`;
+  const fallbackImgUrl = `https://raw.githubusercontent.com/QuranFoundation/quran-images-madinah/main/width_1260/page${pad}.png`;
+
   const html = `
-    <!-- شريط أدوات قارئ الصفحة -->
-    <div class="card p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md bg-opacity-90">
+    <!-- شريط أدوات القارئ العلوي الثابت -->
+    <div class="card p-3 mb-4 flex flex-wrap items-center justify-between gap-2.5 sticky top-16 z-30 backdrop-blur-md bg-opacity-95 shadow-sm">
       <div class="flex items-center gap-2">
-        <button onclick="openQuranModule(false)" class="pill text-xs py-1.5 px-3">
-          <i class="fa-solid fa-list ml-1"></i> فهرس المصحف
+        <button onclick="openQuranModule(false)" class="pill text-xs py-1.5 px-3 font-bold" title="العودة لفهرس المصحف">
+          <i class="fa-solid fa-list ml-1"></i> الفهرس
         </button>
-        <span id="pageTitleBadge" class="font-bold text-xs sm:text-sm">صفحة ${toAr(pageNum)}</span>
+        <span class="text-xs sm:text-sm font-black px-2.5 py-1 rounded-xl" style="background:var(--accent-soft); color:var(--accent)">
+          سورة ${surahName} • ص ${toAr(pageNum)}
+        </span>
       </div>
 
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-xs" style="color:var(--text-muted)">الخط:</span>
-        <button onclick="changeQuranFontSize(-2)" class="pill text-xs py-1 px-2.5 font-bold">A-</button>
-        <button onclick="changeQuranFontSize(2)" class="pill text-xs py-1 px-2.5 font-bold">A+</button>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <!-- زر التبديل للرسم العثماني كنص -->
+        <button onclick="readSurah(${surahNum})" class="pill text-xs py-1.5 px-2.5 font-bold hover:border-accent transition" title="قراءة السورة كنص عثماني">
+          <i class="fa-solid fa-align-right ml-1" style="color:var(--accent)"></i> نص عثماني
+        </button>
+
+        <!-- زر حفظ علامة الوقوف -->
+        <button onclick="saveBookmarkForCurrentPage(${pageNum}, ${surahNum}, '${surahName}')" class="pill text-xs py-1.5 px-2.5 font-bold hover:text-amber-500 transition" title="حفظ علامة الوقوف عند هذه الصفحة">
+          <i class="${isBookmarkedPage ? 'fa-solid text-amber-500' : 'fa-regular text-amber-500'} fa-bookmark ml-1"></i>
+          <span>${isBookmarkedPage ? 'علامتك هنا' : 'حفظ علامة'}</span>
+        </button>
+
+        <!-- أزرار التقليب السريع -->
         <div class="flex items-center gap-1 mr-1">
-          <button onclick="readQuranPage(${pageNum - 1})" ${pageNum <= 1 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="pill text-xs py-1.5 px-2.5 font-bold"'} title="الصفحة السابقة">
+          <button onclick="readQuranPage(${pageNum - 1})" ${pageNum <= 1 ? 'disabled class="pill text-xs py-1.5 px-2.5 opacity-40 cursor-not-allowed"' : 'class="pill text-xs py-1.5 px-2.5 font-bold"'} title="الصفحة السابقة">
             <i class="fa-solid fa-chevron-right"></i>
           </button>
-          <button onclick="readQuranPage(${pageNum + 1})" ${pageNum >= 604 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="pill text-xs py-1.5 px-2.5 font-bold"'} title="الصفحة التالية">
+          <span class="text-xs font-bold px-1" style="color:var(--text-muted)">${toAr(pageNum)}</span>
+          <button onclick="readQuranPage(${pageNum + 1})" ${pageNum >= 604 ? 'disabled class="pill text-xs py-1.5 px-2.5 opacity-40 cursor-not-allowed"' : 'class="pill text-xs py-1.5 px-2.5 font-bold"'} title="الصفحة التالية">
             <i class="fa-solid fa-chevron-left"></i>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- نص صفحة المصحف الشريف -->
-    <div class="card p-6 sm:p-10 mb-6 border-2" style="border-color:var(--border-color); background-color:var(--bg-card)">
-      <div id="pageMetaHeader" class="flex items-center justify-between pb-3 mb-5 border-b text-xs font-bold" style="border-color:var(--border-color); color:var(--text-muted)">
-        <span id="pageSurahName">جاري التحميل...</span>
-        <span id="pageJuzInfo">--</span>
-      </div>
-
-      <div id="quranPageBody" class="quran-verse leading-loose text-justify" style="font-size: ${quranFontSize}px">
-        ${Array(8).fill('<div class="skeleton h-8 my-2"></div>').join('')}
-      </div>
-
-      <div class="flex items-center justify-between pt-4 mt-6 border-t text-xs" style="border-color:var(--border-color)">
-        <button onclick="readQuranPage(${pageNum - 1})" ${pageNum <= 1 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="btn-accent text-xs py-1.5 px-3"'}>
-          <i class="fa-solid fa-arrow-right ml-1"></i> الصفحة السابقة (${toAr(pageNum - 1)})
-        </button>
-        <span class="font-extrabold text-sm px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+    <!-- كارت صفحة مصحف المدينة المنورة الأصلي المعروضة بالمظهر المطلوب تماماً -->
+    <div id="mushafPageWrapper" class="card p-2 sm:p-4 mb-4 border-2 shadow-md relative overflow-hidden transition-all duration-300" style="border-color:var(--border-color); background-color:var(--bg-card)">
+      <!-- شريط معلومات الصفحة العلوي المطابق للرسم -->
+      <div class="flex items-center justify-between px-3 py-2 mb-2 rounded-xl text-xs font-bold border" style="border-color:var(--border-color); background:var(--accent-soft)">
+        <span class="flex items-center gap-1.5" style="color:var(--accent)">
+          <i class="fa-solid fa-layer-group"></i>
+          <span>الجزء ${toAr(juzNum)}</span>
+        </span>
+        <span class="font-extrabold text-sm sm:text-base" style="color:var(--accent)">
+          سورة ${surahName}
+        </span>
+        <span style="color:var(--text-muted)">
           صفحة ${toAr(pageNum)} من ٦٠٤
         </span>
-        <button onclick="readQuranPage(${pageNum + 1})" ${pageNum >= 604 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="btn-accent text-xs py-1.5 px-3"'}>
+      </div>
+
+      <!-- مؤشر تحميل الهيكل يختفي تلقائياً فور جاهزية الصفحة -->
+      <div id="mushafPageSkeleton" class="skeleton w-full aspect-[2/3] max-w-[620px] mx-auto rounded-xl"></div>
+
+      <!-- صورة صفحة المصحف عالية الدقة والمتوافقة تماماً مع الثيمات والوضع الليلي -->
+      <div class="relative flex justify-center items-center py-1">
+        <img id="mushafPageImage"
+             src="${primaryImgUrl}"
+             alt="مصحف المدينة المنورة - صفحة ${pageNum}"
+             class="mushaf-page-img w-full max-w-[620px] h-auto rounded-xl shadow-sm transition-opacity duration-300 opacity-0"
+             loading="eager"
+             decoding="async"
+             onload="this.classList.remove('opacity-0'); document.getElementById('mushafPageSkeleton')?.remove();"
+             onerror="if(!this.dataset.triedFallback){ this.dataset.triedFallback='true'; this.src='${fallbackImgUrl}'; } else { document.getElementById('mushafPageSkeleton')?.remove(); document.getElementById('mushafPageImageFail').classList.remove('hidden'); }"
+        />
+        <div id="mushafPageImageFail" class="hidden p-8 text-center text-sm font-bold text-rose-500">
+          <i class="fa-solid fa-triangle-exclamation text-2xl mb-2 block"></i>
+          تعذر تحميل صورة الصفحة. تحقق من الاتصال بالإنترنت، أو اضغط زر «نص عثماني» للقراءة فوراً.
+        </div>
+      </div>
+
+      <!-- أزرار تقليب الصفحات السفلية الواسعة والمريحة للموبايل -->
+      <div class="flex items-center justify-between pt-3 mt-3 border-t text-xs font-bold" style="border-color:var(--border-color)">
+        <button onclick="readQuranPage(${pageNum - 1})" ${pageNum <= 1 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="btn-accent text-xs py-2 px-3 sm:px-4"'}>
+          <i class="fa-solid fa-arrow-right ml-1"></i> الصفحة السابقة (${toAr(pageNum - 1)})
+        </button>
+
+        <div class="flex items-center gap-1.5">
+          <input type="number" min="1" max="604" value="${pageNum}" onchange="readQuranPage(this.value)" class="inp w-16 text-center text-xs font-bold py-1 px-1.5" title="اكتب رقم أي صفحة ثم اضغط Enter">
+          <span class="text-[11px]" style="color:var(--text-muted)">من ٦٠٤</span>
+        </div>
+
+        <button onclick="readQuranPage(${pageNum + 1})" ${pageNum >= 604 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="btn-accent text-xs py-2 px-3 sm:px-4"'}>
           الصفحة التالية (${toAr(pageNum + 1)}) <i class="fa-solid fa-arrow-left mr-1"></i>
         </button>
+      </div>
+    </div>
+
+    <!-- قسم آيات الصفحة للتفسير والاستماع الصوتي والتلاوة -->
+    <div class="card p-4 mb-6 border" style="border-color:var(--border-color); background:var(--bg-card)">
+      <button onclick="togglePageAyahsDrawer(${pageNum})" class="w-full flex items-center justify-between font-bold text-xs sm:text-sm text-right">
+        <span class="flex items-center gap-2">
+          <i class="fa-solid fa-headphones-simple" style="color:var(--accent)"></i>
+          <span>آيات الصفحة (${toAr(pageNum)}) للتفسير والاستماع والتلاوة</span>
+        </span>
+        <i id="pageAyahsDrawerChevron" class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+      </button>
+      <div id="pageAyahsDrawerContent" class="hidden pt-4 mt-3 border-t space-y-3" style="border-color:var(--border-color)">
+        <div class="text-center p-3 text-xs" style="color:var(--text-muted)">
+          <i class="fa-solid fa-spinner fa-spin ml-1"></i> جاري تحميل آيات الصفحة...
+        </div>
       </div>
     </div>
   `;
 
   renderSubView(html, false);
 
+  // تفعيل السحب بالإصبع على شاشة الموبايل للتقليب السريع بين الصفحات
+  setupMushafSwipeNavigation(pageNum);
+}
+
+// دعم إيماءات السحب باللمس على الموبايل
+function setupMushafSwipeNavigation(pageNum) {
+  const wrapper = $('#mushafPageWrapper');
+  if (!wrapper) return;
+  let startX = 0;
+  let startY = 0;
+
+  wrapper.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 1) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  wrapper.addEventListener('touchend', (e) => {
+    if (e.changedTouches.length === 1) {
+      const diffX = e.changedTouches[0].clientX - startX;
+      const diffY = Math.abs(e.changedTouches[0].clientY - startY);
+      // إذا كان التمرير أفقياً وليس رأسياً
+      if (Math.abs(diffX) > 60 && diffY < 50) {
+        if (diffX < 0 && pageNum < 604) {
+          // سحب لليسار -> الصفحة التالية
+          readQuranPage(pageNum + 1);
+        } else if (diffX > 0 && pageNum > 1) {
+          // سحب لليمين -> الصفحة السابقة
+          readQuranPage(pageNum - 1);
+        }
+      }
+    }
+  }, { passive: true });
+}
+
+// درج آيات الصفحة للتفسير والاستماع وحفظ العلامات
+async function togglePageAyahsDrawer(pageNum) {
+  const content = $('#pageAyahsDrawerContent');
+  const chevron = $('#pageAyahsDrawerChevron');
+  if (!content) return;
+
+  if (!content.classList.contains('hidden')) {
+    content.classList.add('hidden');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+    return;
+  }
+
+  content.classList.remove('hidden');
+  if (chevron) chevron.style.transform = 'rotate(180deg)';
+
   try {
     const res = await fetchJSON(`https://api.alquran.cloud/v1/page/${pageNum}/quran-uthmani`);
-    const pageData = res.data;
-    const ayahs = pageData.ayahs || [];
-
+    const ayahs = res.data?.ayahs || [];
     if (ayahs.length === 0) {
-      $('#quranPageBody').innerHTML = '<div class="text-center p-4">لا توجد آيات في هذه الصفحة.</div>';
+      content.innerHTML = '<div class="text-center p-3 text-xs text-muted">لا توجد آيات في هذه الصفحة.</div>';
       return;
     }
 
-    const firstAyah = ayahs[0];
-    const surahNamesOnPage = [...new Set(ayahs.map(a => a.surah.name))].join(' و ');
-    $('#pageSurahName').textContent = surahNamesOnPage;
-    $('#pageJuzInfo').textContent = `الجزء ${toAr(firstAyah.juz)}`;
-    $('#pageTitleBadge').textContent = `${surahNamesOnPage} - ص ${toAr(pageNum)}`;
-
     const bookmark = ls('quran_bookmark', null);
-    let currentSurahOnPage = null;
-    let pageHtml = '';
-
-    ayahs.forEach(ayah => {
-      if (ayah.surah.number !== currentSurahOnPage) {
-        currentSurahOnPage = ayah.surah.number;
-        pageHtml += `
-          <div class="text-center my-4 py-2 px-4 rounded-xl border border-dashed" style="border-color:var(--border-color); background:var(--accent-soft)">
-            <div class="font-bold text-sm sm:text-base" style="color:var(--accent)">سورة ${ayah.surah.name}</div>
-            ${ayah.surah.number !== 1 && ayah.surah.number !== 9 && ayah.numberInSurah === 1 ? `
-              <div class="font-amiri text-xl font-bold mt-1 text-slate-700 dark:text-slate-300">
-                بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-              </div>
-            ` : ''}
+    content.innerHTML = ayahs.map(a => {
+      const isBookmarked = bookmark && bookmark.surahNumber === a.surah.number && bookmark.ayahNumber === a.numberInSurah;
+      return `
+        <div class="p-3 rounded-xl border flex flex-col gap-2 ${isBookmarked ? 'border-amber-400 bg-amber-500/10' : ''}" style="border-color:var(--border-color); background:var(--bg-card)">
+          <div class="flex items-center justify-between text-xs font-bold" style="color:var(--text-muted)">
+            <span>سورة ${a.surah.name} • آية ${toAr(a.numberInSurah)}</span>
+            <div class="flex items-center gap-1.5">
+              <button onclick="openAyahDetailModal(${a.surah.number}, ${a.numberInSurah}, '${a.surah.name.replace(/'/g, '')}')" class="pill text-[11px] py-1 px-2.5 font-bold" title="تفسير واستماع">
+                <i class="fa-solid fa-circle-info text-accent ml-1"></i> تفسير واستماع
+              </button>
+              <button onclick="saveBookmark(${a.surah.number}, ${a.numberInSurah}, '${a.surah.name.replace(/'/g, '')}', '${a.text.substring(0, 80).replace(/'/g, '')}', event)" class="p-1 text-amber-500 opacity-60 hover:opacity-100 transition" title="حفظ علامة الوقوف">
+                <i class="${isBookmarked ? 'fa-solid' : 'fa-regular'} fa-bookmark"></i>
+              </button>
+            </div>
           </div>
-        `;
-      }
-
-      let t = ayah.text;
-      if (ayah.surah.number !== 1 && ayah.surah.number !== 9 && ayah.numberInSurah === 1) {
-        t = t.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', '').trim();
-      }
-
-      const isBookmarked = bookmark && bookmark.surahNumber === ayah.surah.number && bookmark.ayahNumber === ayah.numberInSurah;
-
-      pageHtml += `
-        <span id="ayahSpan_${ayah.numberInSurah}" class="inline relative rounded px-1 transition ${isBookmarked ? 'bg-amber-500/25 ring-2 ring-amber-400 p-1 rounded font-bold' : 'hover:bg-rose-500/10'}">
-          ${isBookmarked ? '<span class="bg-amber-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold mx-1 align-middle">🔖 موضع وقوفك</span>' : ''}
-          <span onclick="openAyahDetailModal(${ayah.surah.number}, ${ayah.numberInSurah}, '${ayah.surah.name.replace(/'/g, '')}')" class="cursor-pointer" title="انقر لعرض التفسير والاستماع">
-            ${t}
-          </span>
-          <span class="ayah-num cursor-pointer" onclick="openAyahDetailModal(${ayah.surah.number}, ${ayah.numberInSurah}, '${ayah.surah.name.replace(/'/g, '')}')">﴿${toAr(ayah.numberInSurah)}﴾</span>
-          <button onclick="saveBookmark(${ayah.surah.number}, ${ayah.numberInSurah}, '${ayah.surah.name.replace(/'/g, '')}', '${ayah.text.substring(0, 80).replace(/'/g, '')}', event)" class="inline-block p-1 text-amber-500 opacity-40 hover:opacity-100 hover:scale-125 transition align-middle" title="حفظ علامة الوقوف هنا">
-            <i class="${isBookmarked ? 'fa-solid' : 'fa-regular'} fa-bookmark"></i>
-          </button>
-        </span>
+          <div class="quran-verse text-sm sm:text-base leading-relaxed text-justify">
+            ${a.text} <span class="ayah-num" onclick="openAyahDetailModal(${a.surah.number}, ${a.numberInSurah}, '${a.surah.name.replace(/'/g, '')}')">﴿${toAr(a.numberInSurah)}﴾</span>
+          </div>
+        </div>
       `;
-    });
-
-    $('#quranPageBody').innerHTML = pageHtml;
+    }).join('');
   } catch (err) {
-    $('#quranPageBody').innerHTML = '<div class="text-center p-4">تعذر تحميل بيانات الصفحة. تحقق من الاتصال.</div>';
+    content.innerHTML = '<div class="text-center p-3 text-xs text-rose-500">تعذر تحميل الآيات. تحقق من الاتصال بالإنترنت.</div>';
   }
 }
 
@@ -2139,6 +2486,11 @@ async function readSurah(surahNum, targetAyah = null, pushState = true) {
             </button>
           `}
         </div>
+
+        <!-- زر التبديل لمصحف المدينة المنورة صفحات مصورة -->
+        <button onclick="readQuranPage(SURAH_START_PAGES[${surahNum} - 1])" class="pill text-xs py-1.5 px-2.5 font-bold hover:border-accent transition" title="عرض هذه السورة في مصحف المدينة المنورة بالصفحات">
+          <i class="fa-solid fa-file-image ml-1" style="color:var(--accent)"></i> مصحف المدينة
+        </button>
 
         <span class="text-xs" style="color:var(--text-muted)">الخط:</span>
         <button onclick="changeQuranFontSize(-2)" class="pill text-xs py-1 px-2.5 font-bold">A-</button>
@@ -2334,7 +2686,7 @@ function saveBookmark(surahNumber, ayahNumber, surahName, ayahText = '', event =
     timestamp: Date.now()
   };
   sv('quran_bookmark', bookmark);
-  showToast(`تم حفظ الآية (${toAr(ayahNumber)}) من سورة ${surahName} كعلامة وقوف مرجعية ✓`, 'success');
+  showMotivationalCelebration('quran', `سورة ${surahName} • آية ${toAr(ayahNumber)}`);
 
   renderHomeQuranBookmarkCard();
 
@@ -3486,8 +3838,8 @@ function toggleDailyChallengeDone() {
   let total = ls('challenge_total_completed', 0);
   if (next) {
     total++;
-    showToast('مبارك! تم إنجاز تحدي اليوم، تقبل الله صالح أعمالك 🌿✨', 'success');
-    if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+    const ch = getTodayChallenge();
+    showMotivationalCelebration('challenge', ch.title, true);
   } else {
     total = Math.max(0, total - 1);
   }
@@ -3710,7 +4062,18 @@ function toggleTaskDone(taskId, tab) {
   sv(`tasks_${tab}_status`, statusMap);
 
   if (statusMap[taskId]) {
-    if (navigator.vibrate) navigator.vibrate(30);
+    const allTasksList = [...DEFAULT_TASKS[tab], ...ls(`tasks_custom_${tab}`, [])];
+    const foundTask = allTasksList.find(t => t.id === taskId);
+    const taskTitle = foundTask ? foundTask.title : 'المهمة المباركة';
+
+    const completedCount = allTasksList.filter(t => statusMap[t.id]).length;
+    const isAllDone = (completedCount === allTasksList.length);
+
+    if (isAllDone) {
+      showMotivationalCelebration('all_tasks', tab === 'daily' ? 'مهامك اليومية كاملة' : 'مهام هذا القسم', true);
+    } else {
+      showMotivationalCelebration('task', taskTitle, false);
+    }
   }
   openTasksModule(tab);
 }
@@ -3822,6 +4185,7 @@ function goHome(fromPopState = false) {
   });
   renderDailyChallengeCard();
   renderHomeQuranBookmarkCard();
+  renderHomeNotificationBanner();
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (!fromPopState && history.state?.screen && history.state.screen !== 'home') {
     history.pushState({ screen: 'home' }, '');
@@ -3870,6 +4234,17 @@ window.addEventListener('popstate', (e) => {
   isHandlingPopState = false;
 });
 
+// دعم التقليب بين صفحات مصحف المدينة بأسهم لوحة المفاتيح
+window.addEventListener('keydown', (e) => {
+  if (currentReadingPage && !['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) {
+    if (e.key === 'ArrowLeft' && currentReadingPage < 604) {
+      readQuranPage(currentReadingPage + 1);
+    } else if (e.key === 'ArrowRight' && currentReadingPage > 1) {
+      readQuranPage(currentReadingPage - 1);
+    }
+  }
+});
+
 // نافذة تعديل إعدادات حساب الصلاة
 function toggleCalcSettings() {
   if (!isHandlingPopState) {
@@ -3915,6 +4290,350 @@ function saveCalcSettings(val) {
   sv('calc_method', calculationMethod);
   loadPrayerTimes();
   showToast('تم تحديث طريقة الحساب بنجاح ✓', 'success');
+}
+
+/* ==========================================================================
+   12.B. نظام الرسائل التحفيزية والاحتفالية ونظام الإشعارات المتقدم
+   ========================================================================== */
+
+// قاعدة بيانات العبارات التحفيزية والأدعية والأحاديث النبوية
+const MOTIVATIONAL_QUOTES = {
+  task: [
+    { title: "تقبّل الله طاعتك! 🌿", quote: "خطوة مباركة تُثقل موازين حسناتك يوم القيامة", ayah: "«أحب الأعمال إلى الله أدومها وإن قلّ»" },
+    { title: "أحسنت الهمّة وثبّتك الله! ✨", quote: "هنيئاً لك هذا الإنجاز الإيماني المبارك", ayah: "﴿وَسَارِعُوا إِلَىٰ مَغْفِرَةٍ مِّن رَّبِّكُمْ وَجَنَّةٍ عَرْضُهَا السَّمَاوَاتُ وَالْأَرْضُ﴾" },
+    { title: "مبارك الإنجاز والطاعة! 🌸", quote: "طوبى لمن عمّر وقته بطاعة ربه والتقرّب إليه", ayah: "«من تقرّب إليّ شبراً تقرّبت إليه ذراعاً»" },
+    { title: "زادك الله نوراً وبركة 🌟", quote: "جعلها الله في صحيفة حسناتك ونوراً في قلبك ودربك", ayah: "﴿إِنَّ الَّذِينَ آمَنُوا وَعَمِلُوا الصَّالِحَاتِ يَهْدِيهِمْ رَبُّهُم بِإِيمَانِهِمْ﴾" }
+  ],
+  all_tasks: [
+    { title: "ما شاء الله تبارك الله! 🏆", quote: "أتممت جميع مهامك اليومية بنسبة ١٠٠٪!", ayah: "هنيئاً لك هذا اليوم العامر بالطاعات والبركات، جعله الله شاهداً لك لا عليك 🌟" }
+  ],
+  challenge: [
+    { title: "بطل اليوم الإيماني! 🏅", quote: "أتممت تحدي اليوم المبارك بنجاح وعزيمة", ayah: "﴿وَفِي ذَٰلِكَ فَلْيَتَنَافَسِ الْمُتَنَافِسُونَ﴾.. زادك الله سباقاً للخيرات 🌿" }
+  ],
+  adhkar: [
+    { title: "طوبى للذاكرين والذاكرات! 🌸", quote: "أتممت الورد المبارك، وحصّنك الله بذكره وسكينته", ayah: "«مثل الذي يذكر ربه والذي لا يذكر ربه مثل الحي والميت» 💚" }
+  ],
+  tasbeeh: [
+    { title: "هنيئاً لك عمارة وقتك بالتسبيح 📿", quote: "غُرست لك نخلة في الجنة ورُفعت درجاتك في عليين", ayah: "«كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن: سبحان الله وبحمده سبحان الله العظيم» ✨" }
+  ],
+  prayer: [
+    { title: "تقبّل الله صلاتك وركوعك وسجودك 🕌", quote: "جعلها الله نوراً لك وبرهاناً وسكينة تملأ قلبك", ayah: "«الصلاة نور، والصدقة برهان، والصبر ضياء» 🤲" }
+  ],
+  quran: [
+    { title: "مبارك تلاوتك لكتاب الله العزيز 📖", quote: "يُقال لقارئ القرآن يوم القيامة: اقرأ وارتقِ ورتّل", ayah: "«خيركم من تعلّم القرآن وعلّمه» 🤍" }
+  ]
+};
+
+// عرض الرسائل التحفيزية المبهجة
+function showMotivationalCelebration(type, itemTitle = '', isFullModal = false) {
+  const list = MOTIVATIONAL_QUOTES[type] || MOTIVATIONAL_QUOTES.task;
+  const picked = list[Math.floor(Math.random() * list.length)];
+
+  // اهتزاز تشجيعي لطيف في الهاتف
+  if (navigator.vibrate) {
+    if (isFullModal || type === 'all_tasks' || type === 'challenge') {
+      navigator.vibrate([60, 80, 60, 100, 80]);
+    } else {
+      navigator.vibrate([40, 50, 40]);
+    }
+  }
+
+  // إذا كان إنجازاً كبيراً (إكمال كل المهام، أو التحدي اليومي، أو الأذكار)
+  if (isFullModal || type === 'all_tasks' || type === 'challenge' || type === 'adhkar') {
+    renderCelebrationModal(type, picked, itemTitle);
+  } else {
+    // توست تحفيزي مبهج وسريع
+    renderMotivationalToast(type, picked, itemTitle);
+  }
+}
+
+// نافذة الاحتفال بالإنجاز الكبير
+function renderCelebrationModal(type, picked, itemTitle) {
+  if (!isHandlingPopState) {
+    history.pushState({ screen: 'modal' }, '');
+  }
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  const icons = {
+    all_tasks: { icon: 'fa-trophy', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+    challenge: { icon: 'fa-award', color: 'var(--accent)', bg: 'var(--accent-soft)' },
+    adhkar: { icon: 'fa-hands-praying', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
+    tasbeeh: { icon: 'fa-circle-dot', color: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)' },
+    prayer: { icon: 'fa-mosque', color: 'var(--accent)', bg: 'var(--accent-soft)' },
+    quran: { icon: 'fa-book-quran', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+    task: { icon: 'fa-circle-check', color: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' }
+  };
+  const theme = icons[type] || icons.task;
+
+  modal.innerHTML = `
+    <div class="card celebrate-card p-6 sm:p-8 max-w-md w-full text-center relative overflow-hidden rounded-3xl border-2 shadow-2xl space-y-4" style="border-color: ${theme.color}; background-color: var(--bg-card)">
+      <!-- نجوم الزينة العلوية المبهجة -->
+      <div class="flex justify-center items-center gap-3 text-amber-400 text-lg">
+        <i class="fa-solid fa-star sparkle-icon"></i>
+        <i class="fa-solid fa-sparkles text-2xl sparkle-icon" style="animation-delay: 0.3s"></i>
+        <i class="fa-solid fa-star sparkle-icon" style="animation-delay: 0.6s"></i>
+      </div>
+
+      <!-- الأيقونة الرئيسية المضيئة -->
+      <div class="w-20 h-20 mx-auto rounded-3xl flex items-center justify-center text-3xl shadow-md transition-transform hover:scale-110" style="background:${theme.bg}; color:${theme.color}">
+        <i class="fa-solid ${theme.icon}"></i>
+      </div>
+
+      <div>
+        <h3 class="text-xl sm:text-2xl font-black mb-1" style="color:var(--text-primary)">
+          ${picked.title}
+        </h3>
+        ${itemTitle ? `
+          <div class="inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 border" style="border-color:var(--border-color); background:var(--accent-soft); color:var(--accent)">
+            «${itemTitle}»
+          </div>
+        ` : ''}
+        <p class="text-sm font-bold leading-relaxed" style="color:var(--text-muted)">
+          ${picked.quote}
+        </p>
+      </div>
+
+      <!-- الآية أو الحديث المحفز في إطار إسلامي أنيق -->
+      <div class="p-4 rounded-2xl border text-sm font-amiri font-bold leading-relaxed text-slate-700 dark:text-slate-200" style="border-color:var(--border-color); background:color-mix(in srgb, var(--accent) 5%, var(--bg-card))">
+        ${picked.ayah}
+      </div>
+
+      <!-- زر المتابعة والحمد -->
+      <div class="pt-2">
+        <button onclick="this.closest('.fixed').remove()" class="btn-accent w-full py-3 text-sm font-bold shadow-lg">
+          <i class="fa-solid fa-heart ml-1"></i> الحمد لله، استمر في الطاعة
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+// توست تحفيزي مبهج يظهر أعلى الشاشة
+function renderMotivationalToast(type, picked, itemTitle) {
+  const toast = document.createElement('div');
+  toast.className = 'fixed top-5 inset-x-4 max-w-md mx-auto z-50 p-4 rounded-2xl border-2 shadow-2xl backdrop-blur-md flex items-center gap-3 celebrate-card animate-fadeIn';
+  toast.style.backgroundColor = 'var(--bg-card)';
+  toast.style.borderColor = 'var(--accent)';
+
+  toast.innerHTML = `
+    <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm" style="background:var(--accent-soft); color:var(--accent)">
+      <i class="fa-solid fa-sparkles"></i>
+    </div>
+    <div class="flex-1 text-right">
+      <div class="font-black text-xs sm:text-sm" style="color:var(--text-primary)">
+        ${picked.title}
+      </div>
+      <div class="text-[11px] font-bold mt-0.5 line-clamp-1" style="color:var(--text-muted)">
+        ${itemTitle ? `${itemTitle} • ` : ''}${picked.quote}
+      </div>
+    </div>
+    <button onclick="this.parentElement.remove()" class="p-1 opacity-40 hover:opacity-100 text-xs shrink-0">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  `;
+
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+    setTimeout(() => toast.remove(), 500);
+  }, 4200);
+}
+
+// طلب صلاحية الإشعارات مع إمكانية تجربة إرسال إشعار فوري
+async function requestNotificationPermissionPrompt(showTest = false) {
+  if (!('Notification' in window)) {
+    showToast('متصفحك أو جهازك لا يدعم نظام الإشعارات المباشرة', 'warn');
+    return false;
+  }
+
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      notificationSettings.master_prayers = true;
+      notificationSettings.tasks_enabled = true;
+      PRAYERS_LIST.forEach(p => { notificationSettings[p.id + '_at'] = true; });
+      notificationSettings['Sunrise_a'] = true;
+      sv('notifs', notificationSettings);
+
+      const banner = $('#homeNotificationBanner');
+      if (banner) banner.innerHTML = '';
+
+      showToast('تم تفعيل إشعارات الصلاة والمهام بنجاح! 🔔✨', 'success');
+
+      if (showTest) {
+        setTimeout(() => {
+          triggerAlert(
+            'تنبيه رفيق المسلم 🔔',
+            'تم تفعيل الإشعارات بنجاح! ستصلك تنبيهات الأذان والأذكار والمهام في مواعيدها بفضل الله 🌿',
+            false
+          );
+        }, 800);
+      }
+      return true;
+    } else if (perm === 'denied') {
+      showToast('تم رفض الإشعارات. يرجى تفعيلها من إعدادات المتصفح أو الهاتف لتصلك التنبيهات.', 'warn');
+      return false;
+    }
+  } catch (e) {
+    console.error('Permission request error:', e);
+  }
+  return false;
+}
+
+// كارت تفعيل التنبيهات في الصفحة الرئيسية
+function renderHomeNotificationBanner() {
+  const container = $('#homeNotificationBanner');
+  if (!container) return;
+
+  const isPermGranted = ('Notification' in window) && Notification.permission === 'granted';
+  if (isPermGranted) {
+    container.innerHTML = '';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="card p-4 sm:p-5 mb-5 border-2 border-amber-300 dark:border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center bg-amber-500 text-white shrink-0 shadow-xs text-xl">
+          <i class="fa-solid fa-bell-ring animate-bounce"></i>
+        </div>
+        <div>
+          <div class="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            تفعيل تنبيهات الأذان والمهام اليومية 🔔
+          </div>
+          <div class="text-xs sm:text-sm font-bold mt-0.5" style="color:var(--text-primary)">
+            اضغط لتفعيل إشعارات الصلاة في موعدها وتذكيرات أذكار الصباح والمساء
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end pt-1 sm:pt-0">
+        <button onclick="requestNotificationPermissionPrompt(true)" class="btn-accent text-xs py-2 px-5 font-bold shadow-sm w-full sm:w-auto justify-center">
+          تفعيل الإشعارات الآن <i class="fa-solid fa-arrow-left mr-1"></i>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// نافذة إعدادات الإشعارات والتنبيهات المتقدمة
+function openNotificationSettingsModal() {
+  if (!isHandlingPopState) {
+    history.pushState({ screen: 'modal' }, '');
+  }
+
+  const isPermGranted = ('Notification' in window) && Notification.permission === 'granted';
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div class="card p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto rounded-3xl border-2" style="border-color:var(--border-color); background-color:var(--bg-card)">
+      <div class="flex items-center justify-between pb-3 border-b" style="border-color:var(--border-color)">
+        <h3 class="font-black text-base sm:text-lg flex items-center gap-2" style="color:var(--accent)">
+          <i class="fa-solid fa-bell"></i>
+          <span>إعدادات التنبيهات والإشعارات</span>
+        </h3>
+        <button onclick="this.closest('.fixed').remove()" class="text-xs pill py-1 px-2.5">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- حالة الصلاحية في الهاتف -->
+      <div class="p-3.5 rounded-2xl border flex items-center justify-between gap-3" style="background:var(--accent-soft); border-color:var(--border-color)">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold ${isPermGranted ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'} shadow-xs">
+            <i class="fa-solid ${isPermGranted ? 'fa-check' : 'fa-triangle-exclamation'}"></i>
+          </div>
+          <div>
+            <div class="text-xs font-black">${isPermGranted ? 'صلاحية الإشعارات مفعّلة في جهازك ✓' : 'الإشعارات غير مفعّلة بعد في جهازك'}</div>
+            <div class="text-[11px] opacity-75" style="color:var(--text-muted)">
+              ${isPermGranted ? 'ستصلك التنبيهات وصوت الأذان في مواعيدها المحددة' : 'اضغط على زر التفعيل لتصلك تنبيهات الصلاة والمهام'}
+            </div>
+          </div>
+        </div>
+        ${!isPermGranted ? `
+          <button onclick="requestNotificationPermissionPrompt(true); this.closest('.fixed').remove()" class="btn-accent text-xs py-2 px-3 font-bold shrink-0">
+            تفعيل الآن
+          </button>
+        ` : `
+          <button onclick="triggerAlert('تجربة إشعار رفيق المسلم 🔔', 'هكذا تظهر لك تنبيهات الأذان والمهام اليومية المباركة بفضل الله 🌿', false)" class="pill text-xs py-1.5 px-3 font-bold shrink-0 hover:border-accent">
+            تجربة إشعار 📲
+          </button>
+        `}
+      </div>
+
+      <!-- التحكم العام -->
+      <div class="space-y-3 pt-1">
+        <label class="flex items-center justify-between p-3 rounded-xl border cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition" style="border-color:var(--border-color)">
+          <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-volume-high text-accent"></i>
+            <div>
+              <div class="text-xs font-bold">صوت الأذان المبارك عند دخول الوقت</div>
+              <div class="text-[10px] text-muted">تشغيل الأذان بصوت الحرم المكي الشريف</div>
+            </div>
+          </div>
+          <input type="checkbox" id="modalAudioMuteCheckbox" ${!audioMuted ? 'checked' : ''} onchange="toggleAudioMute()" class="w-5 h-5 rounded-md accent-rose-600 cursor-pointer">
+        </label>
+
+        <label class="flex items-center justify-between p-3 rounded-xl border cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition" style="border-color:var(--border-color)">
+          <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-list-check text-emerald-500"></i>
+            <div>
+              <div class="text-xs font-bold">تنبيهات المهام والأذكار اليومية</div>
+              <div class="text-[10px] text-muted">تذكير بأذكار الصباح (٧:٣٠ص) والمساء (٥:٠٠م) والوتر (١٠:٣٠م)</div>
+            </div>
+          </div>
+          <input type="checkbox" id="modalTasksNotifCheckbox" ${notificationSettings.tasks_enabled ? 'checked' : ''} onchange="notificationSettings.tasks_enabled = this.checked; sv('notifs', notificationSettings);" class="w-5 h-5 rounded-md accent-rose-600 cursor-pointer">
+        </label>
+      </div>
+
+      <!-- تخصيص تنبيهات كل صلاة -->
+      <div class="pt-2">
+        <div class="text-xs font-bold mb-2 flex items-center justify-between" style="color:var(--text-muted)">
+          <span>تنبيهات أذان الصلوات (عند دخول وقت الصلاة):</span>
+          <button onclick="enableAllPrayersNotifs(true)" class="text-[11px] underline hover:text-accent font-bold">تفعيل الكل</button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          ${PRAYERS_LIST.map(p => `
+            <label class="flex items-center justify-between p-2.5 rounded-xl border cursor-pointer" style="border-color:var(--border-color)">
+              <span class="font-bold">أذان ${p.name}</span>
+              <input type="checkbox" ${notificationSettings[p.id + '_at'] ? 'checked' : ''} onchange="notificationSettings['${p.id}_at'] = this.checked; sv('notifs', notificationSettings);" class="w-4 h-4 rounded accent-rose-600 cursor-pointer">
+            </label>
+          `).join('')}
+          <label class="flex items-center justify-between p-2.5 rounded-xl border cursor-pointer col-span-2" style="border-color:var(--border-color)">
+            <span class="font-bold">صلاة الضحى (بعد الشروق بـ 15 دقيقة)</span>
+            <input type="checkbox" ${notificationSettings['Sunrise_a'] ? 'checked' : ''} onchange="notificationSettings['Sunrise_a'] = this.checked; sv('notifs', notificationSettings);" class="w-4 h-4 rounded accent-rose-600 cursor-pointer">
+          </label>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-3 border-t" style="border-color:var(--border-color)">
+        <button onclick="this.closest('.fixed').remove()" class="btn-accent text-xs py-2 px-5 font-bold">
+          حفظ وإغلاق ✓
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+function enableAllPrayersNotifs(enable) {
+  PRAYERS_LIST.forEach(p => {
+    notificationSettings[p.id + '_at'] = enable;
+  });
+  notificationSettings['Sunrise_a'] = enable;
+  sv('notifs', notificationSettings);
+  showToast(enable ? 'تم تفعيل تنبيهات جميع الصلوات ✓' : 'تم تعطيل التنبيهات', 'success');
+  const modal = document.querySelector('.fixed.z-50:not(#toastContainer)');
+  if (modal) modal.remove();
+  openNotificationSettingsModal();
 }
 
 /* ==========================================================================
@@ -4132,6 +4851,7 @@ window.addEventListener('DOMContentLoaded', () => {
   fetchRandomHadith();
   renderDailyChallengeCard();
   renderHomeQuranBookmarkCard();
+  renderHomeNotificationBanner();
 
   // معالجة اختصارات الشاشة الرئيسية
   const params = new URLSearchParams(window.location.search);
