@@ -388,6 +388,9 @@ body {
       <!-- يتم توليده تلقائياً عبر renderDailyChallengeCard() -->
     </div>
 
+    <!-- كارت استئناف قراءة القرآن من آخر علامة وقوف وحفظ (يظهر تلقائياً عند وجود علامة) -->
+    <div id="homeQuranBookmarkContainer" class="mb-6"></div>
+
     <!-- شبكة الأقسام الرئيسية (7 وحدات + إضافات احترافية) -->
     <div class="mb-4">
       <h2 class="text-lg font-bold mb-3 flex items-center gap-2">
@@ -404,8 +407,9 @@ body {
   <section id="subView" hidden class="animate-fadeIn">
     <div class="flex items-center justify-between gap-3 mb-5 pb-3 border-b" style="border-color: var(--border-color)">
       <div class="flex items-center gap-3">
-        <button onclick="goHome()" class="pill text-sm">
-          <i class="fa-solid fa-arrow-right ml-1"></i> العودة للرئيسية
+        <button onclick="handleAppBackButton()" class="pill text-sm font-bold flex items-center gap-1.5 shadow-xs">
+          <i class="fa-solid fa-arrow-right"></i>
+          <span id="subViewBackBtnText">العودة للرئيسية</span>
         </button>
         <h2 id="subViewTitle" class="text-xl sm:text-2xl font-extrabold flex items-center gap-2">--</h2>
       </div>
@@ -723,33 +727,55 @@ async function loadPrayerTimes() {
   const todayStr = dateToDDMMYYYY(new Date());
 
   $('#currentLocationName').textContent = userLocation.name;
-  $('#prayerTimesGrid').innerHTML = Array(6).fill('<div class="skeleton h-20"></div>').join('');
+
+  // استرجاع فوري من الكاش المحلي لمنع أي انتظار أو وميض (فتح فوري 0ms)
+  const cacheKey = `prayer_timings_${dateStr}_${Math.round(userLocation.lat * 100)}_${Math.round(userLocation.lng * 100)}_${calculationMethod}`;
+  const cachedData = ls(cacheKey, null);
+  if (cachedData) {
+    displayedTimingsData = cachedData;
+    if (currentDayOffset === 0) todayTimingsData = cachedData;
+    renderDatesHeader(targetDate, displayedTimingsData);
+    renderPrayerTimesGrid(targetDate, displayedTimingsData);
+  } else if (!$('#prayerTimesGrid').children.length) {
+    $('#prayerTimesGrid').innerHTML = Array(6).fill('<div class="skeleton h-20"></div>').join('');
+  }
 
   try {
     const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${userLocation.lat}&longitude=${userLocation.lng}&method=${calculationMethod}`;
     const res = await fetchJSON(url);
     displayedTimingsData = res.data;
+    sv(cacheKey, displayedTimingsData);
 
     // حفظ أوقات اليوم الحقيقي لحساب العد التنازلي بدقة
     if (currentDayOffset === 0) {
       todayTimingsData = displayedTimingsData;
     } else if (!todayTimingsData) {
-      const todayUrl = `https://api.aladhan.com/v1/timings/${todayStr}?latitude=${userLocation.lat}&longitude=${userLocation.lng}&method=${calculationMethod}`;
-      const tRes = await fetchJSON(todayUrl);
-      todayTimingsData = tRes.data;
+      const todayKey = `prayer_timings_${todayStr}_${Math.round(userLocation.lat * 100)}_${Math.round(userLocation.lng * 100)}_${calculationMethod}`;
+      const cachedToday = ls(todayKey, null);
+      if (cachedToday) {
+        todayTimingsData = cachedToday;
+      } else {
+        const todayUrl = `https://api.aladhan.com/v1/timings/${todayStr}?latitude=${userLocation.lat}&longitude=${userLocation.lng}&method=${calculationMethod}`;
+        fetchJSON(todayUrl).then(tRes => {
+          todayTimingsData = tRes.data;
+          sv(todayKey, todayTimingsData);
+        }).catch(() => {});
+      }
     }
 
     renderDatesHeader(targetDate, displayedTimingsData);
     renderPrayerTimesGrid(targetDate, displayedTimingsData);
   } catch (e) {
-    $('#prayerTimesGrid').innerHTML = `
-      <div class="col-span-full card p-6 text-center">
-        <i class="fa-solid fa-triangle-exclamation text-3xl text-amber-500 mb-2"></i>
-        <div class="font-bold mb-1">تعذر تحميل مواقيت الصلاة</div>
-        <div class="text-sm mb-3" style="color:var(--text-muted)">يرجى التأكد من اتصالك بالإنترنت.</div>
-        <button onclick="loadPrayerTimes()" class="btn-accent text-sm">إعادة المحاولة</button>
-      </div>
-    `;
+    if (!cachedData) {
+      $('#prayerTimesGrid').innerHTML = `
+        <div class="col-span-full card p-6 text-center">
+          <i class="fa-solid fa-triangle-exclamation text-3xl text-amber-500 mb-2"></i>
+          <div class="font-bold mb-1">تعذر تحميل مواقيت الصلاة</div>
+          <div class="text-sm mb-3" style="color:var(--text-muted)">يرجى التأكد من اتصالك بالإنترنت.</div>
+          <button onclick="loadPrayerTimes()" class="btn-accent text-sm">إعادة المحاولة</button>
+        </div>
+      `;
+    }
   }
 }
 
@@ -1241,6 +1267,52 @@ function decrementDhikrCounter(idx) {
   if (finishedCount === currentCategoryAdhkar.length) {
     if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     showToast('هنيئاً لك! تم إتمام جميع أذكار هذا الورد المبارك 🌿', 'success');
+    markAdhkarTaskAutoDone(currentOpenCatId);
+  }
+}
+
+// التحديد التلقائي لمهام الأذكار في قسم "مهامي وعباداتي"
+function markAdhkarTaskAutoDone(catId) {
+  const statusMap = ls('tasks_daily_status', {});
+  let updatedTaskTitle = '';
+
+  // 1. فحص المهام اليومية الافتراضية
+  if (catId === 'sabah' && !statusMap['d_adhkar_m']) {
+    statusMap['d_adhkar_m'] = true;
+    updatedTaskTitle = 'أذكار الصباح كاملة';
+  } else if ((catId === 'masa' || catId === 'masaa') && !statusMap['d_adhkar_e']) {
+    statusMap['d_adhkar_e'] = true;
+    updatedTaskTitle = 'أذكار المساء كاملة';
+  }
+
+  // 2. فحص أي مهام مخصصة أضافها المستخدم تحتوي على كلمات مطابقة
+  const customTasks = ls('tasks_custom_daily', []);
+  const keyword = (catId === 'sabah') ? 'صباح' : (catId === 'masa' || catId === 'masaa') ? 'مساء' : (catId === 'nom') ? 'نوم' : '';
+  if (keyword) {
+    customTasks.forEach(t => {
+      if (t.title.includes(keyword) && !statusMap[t.id]) {
+        statusMap[t.id] = true;
+        if (!updatedTaskTitle) updatedTaskTitle = t.title;
+      }
+    });
+  }
+
+  if (updatedTaskTitle) {
+    sv('tasks_daily_status', statusMap);
+    setTimeout(() => {
+      showToast(`🌿 تقبل الله طاعتك! تم تحديد مهمة «${updatedTaskTitle}» كمنجزة تلقائياً في مهامك اليومية ✓`, 'success');
+    }, 1200);
+  }
+}
+
+function markTasbeehTaskAutoDone() {
+  const statusMap = ls('tasks_daily_status', {});
+  if (!statusMap['d_tasbeeh']) {
+    statusMap['d_tasbeeh'] = true;
+    sv('tasks_daily_status', statusMap);
+    setTimeout(() => {
+      showToast('🌿 تقبل الله طاعتك! تم تحديد مهمة «الاستغفار والتسبيح 100 مرة» كمنجزة تلقائياً في مهامك اليومية ✓', 'success');
+    }, 1200);
   }
 }
 
@@ -1428,6 +1500,10 @@ function onTasbeehClick() {
 
     if (tasbeehVibrateEnabled && navigator.vibrate) navigator.vibrate([100, 50, 100]);
     showToast(`أحسنت! أتممت الدورة (${toAr(tasbeehTarget)}) بنجاح 🌿`, 'success');
+
+    if (tasbeehTarget === 100 || (tasbeehRounds * tasbeehTarget) >= 99) {
+      markTasbeehTaskAutoDone();
+    }
     
     tasbeehCount = 0;
     setTimeout(() => {
@@ -1453,48 +1529,276 @@ function resetTasbeehCounter() {
 }
 
 /* ==========================================================================
-   5. القرآن الكريم (Holy Quran Reader)
+   5. القرآن الكريم (Holy Quran Reader & Comprehensive Indexes & Ayah Search)
    ========================================================================== */
 let allSurahsCache = null;
 let currentReadingSurah = null;
+let currentReadingPage = null;
 let quranFontSize = ls('quran_font_size', 28);
+let currentQuranTab = 'surahs'; // 'surahs' | 'juz' | 'pages' | 'search'
+let currentSearchPreferredSurah = null;
+let ayahSearchDebounce = null;
 
-async function openQuranModule() {
+// بيانات الأجزاء الثلاثين الدقيقة حسب مصحف المدينة المنورة
+const QURAN_JUZ_DATA = [
+  { juz: 1, name: 'الم', surah: 1, surahName: 'الفاتحة', ayah: 1, page: 1 },
+  { juz: 2, name: 'سيقول السفهاء', surah: 2, surahName: 'البقرة', ayah: 142, page: 22 },
+  { juz: 3, name: 'تلك الرسل', surah: 2, surahName: 'البقرة', ayah: 253, page: 42 },
+  { juz: 4, name: 'لن تنالوا البر', surah: 3, surahName: 'آل عمران', ayah: 93, page: 62 },
+  { juz: 5, name: 'والمحصنات', surah: 4, surahName: 'النساء', ayah: 24, page: 82 },
+  { juz: 6, name: 'لا يحب الله', surah: 4, surahName: 'النساء', ayah: 148, page: 102 },
+  { juz: 7, name: 'لتجدن أشد الناس', surah: 5, surahName: 'المائدة', ayah: 82, page: 121 },
+  { juz: 8, name: 'ولو أننا نزلنا', surah: 6, surahName: 'الأنعام', ayah: 111, page: 142 },
+  { juz: 9, name: 'قال الملأ', surah: 7, surahName: 'الأعراف', ayah: 88, page: 162 },
+  { juz: 10, name: 'واعلموا أنما غنمتم', surah: 8, surahName: 'الأنفال', ayah: 41, page: 182 },
+  { juz: 11, name: 'يعتذرون إليكم', surah: 9, surahName: 'التوبة', ayah: 93, page: 201 },
+  { juz: 12, name: 'وما من دابة', surah: 11, surahName: 'هود', ayah: 6, page: 222 },
+  { juz: 13, name: 'وما أبرئ نفسي', surah: 12, surahName: 'يوسف', ayah: 53, page: 242 },
+  { juz: 14, name: 'ربما يود الذين كفروا', surah: 15, surahName: 'الحجر', ayah: 1, page: 262 },
+  { juz: 15, name: 'سبحان الذي أسرى', surah: 17, surahName: 'الإسراء', ayah: 1, page: 282 },
+  { juz: 16, name: 'قال ألم أقل لك', surah: 18, surahName: 'الكهف', ayah: 75, page: 302 },
+  { juz: 17, name: 'اقترب للناس حسابهم', surah: 21, surahName: 'الأنبياء', ayah: 1, page: 322 },
+  { juz: 18, name: 'قد أفلح المؤمنون', surah: 23, surahName: 'المؤمنون', ayah: 1, page: 342 },
+  { juz: 19, name: 'وقال الذين لا يرجون', surah: 25, surahName: 'الفرقان', ayah: 21, page: 362 },
+  { juz: 20, name: 'أمن خلق السماوات', surah: 27, surahName: 'النمل', ayah: 56, page: 382 },
+  { juz: 21, name: 'اتل ما أوحي إليك', surah: 29, surahName: 'العنكبوت', ayah: 46, page: 402 },
+  { juz: 22, name: 'ومن يقنت منكن', surah: 33, surahName: 'الأحزاب', ayah: 31, page: 422 },
+  { juz: 23, name: 'وما أنزلنا على قومه', surah: 36, surahName: 'يس', ayah: 28, page: 442 },
+  { juz: 24, name: 'فمن أظلم ممن كذب', surah: 39, surahName: 'الزمر', ayah: 32, page: 462 },
+  { juz: 25, name: 'إليه يرد علم الساعة', surah: 41, surahName: 'فصلت', ayah: 47, page: 482 },
+  { juz: 26, name: 'حم (تنزيل الكتاب)', surah: 46, surahName: 'الأحقاف', ayah: 1, page: 502 },
+  { juz: 27, name: 'قال فما خطبكم', surah: 51, surahName: 'الذاريات', ayah: 31, page: 522 },
+  { juz: 28, name: 'قد سمع الله', surah: 58, surahName: 'المجادلة', ayah: 1, page: 542 },
+  { juz: 29, name: 'تبارك الذي بيده الملك', surah: 67, surahName: 'الملك', ayah: 1, page: 562 },
+  { juz: 30, name: 'عم يتساءلون', surah: 78, surahName: 'النبأ', ayah: 1, page: 582 }
+];
+
+// أداة تنظيف النصوص العربية للبحث (إزالة التشكيل وتوحيد الألفات والهمزات)
+function cleanArabicText(str) {
+  if (!str) return '';
+  return str
+    .replace(/[\u064B-\u065F\u0670]/g, '')
+    .replace(/[إأآٱ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/ة/g, 'ه')
+    .replace(/ؤ|ئ/g, 'ء')
+    .trim();
+}
+
+// دالة حساب الوقت المنقضي بصيغة لطيفة
+function formatTimeAgo(timeStr) {
+  if (!timeStr) return '';
+  const diff = Date.now() - new Date(timeStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'الآن';
+  if (mins < 60) return `منذ ${toAr(mins)} دقيقة`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `منذ ${toAr(hours)} ساعة`;
+  const days = Math.floor(hours / 24);
+  return `منذ ${toAr(days)} يوم`;
+}
+
+// كارت العلامة المرجعية الرئيسي في أعلى واجهة القرآن
+function renderQuranHeroBookmarkCard(bookmark) {
+  return `
+    <div class="card p-5 mb-5 border-2 border-amber-400 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent shadow-md relative overflow-hidden">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-amber-500 bg-amber-500/20 text-2xl shrink-0 shadow-xs">
+            <i class="fa-solid fa-bookmark animate-pulse"></i>
+          </div>
+          <div>
+            <div class="text-xs font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <span>آخر موضع وقوف وحفظ في المصحف</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 font-bold">${formatTimeAgo(bookmark.timestamp || bookmark.date)}</span>
+            </div>
+            <div class="text-base sm:text-lg font-black mt-0.5">
+              سورة ${bookmark.surahName} • الآية رقم ${toAr(bookmark.ayahNumber)}
+            </div>
+            ${bookmark.ayahText ? `<div class="font-amiri text-sm opacity-80 mt-1 line-clamp-1 truncate max-w-md">«${bookmark.ayahText}»</div>` : ''}
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <button onclick="deleteQuranBookmark()" class="pill text-xs py-2 px-3 text-rose-500 hover:bg-rose-500/10" title="إزالة العلامة">
+            <i class="fa-solid fa-trash-can"></i>
+          </button>
+          <button onclick="readSurah(${bookmark.surahNumber}, ${bookmark.ayahNumber})" class="btn-accent text-xs py-2 px-5 font-bold shadow-md flex items-center gap-2">
+            <i class="fa-solid fa-book-open"></i>
+            <span>متابعة القراءة الآن</span>
+            <i class="fa-solid fa-arrow-left text-[10px]"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function deleteQuranBookmark() {
+  localStorage.removeItem('rm_quran_bookmark');
+  showToast('تم حذف علامة الوقوف بنجاح', 'info');
+  const hero = $('#quranHeroBookmarkWrap');
+  if (hero) hero.innerHTML = '';
+  renderHomeQuranBookmarkCard();
+}
+
+// كارت استئناف القراءة في الصفحة الرئيسية
+function renderHomeQuranBookmarkCard() {
+  const container = $('#homeQuranBookmarkContainer');
+  if (!container) return;
+  const bookmark = ls('quran_bookmark', null);
+  if (!bookmark) {
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = `
+    <div class="card p-4 sm:p-5 border-2 border-amber-300 dark:border-amber-500/40 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-md hover:shadow-lg transition">
+      <div class="flex items-center gap-3.5">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center text-amber-500 bg-amber-500/20 text-xl shrink-0 shadow-xs">
+          <i class="fa-solid fa-bookmark animate-pulse"></i>
+        </div>
+        <div>
+          <div class="text-[11px] font-extrabold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+            <span>موضع قراءتك الأخير في المصحف</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 font-bold">${formatTimeAgo(bookmark.timestamp || bookmark.date)}</span>
+          </div>
+          <div class="text-base font-black mt-0.5">سورة ${bookmark.surahName} • آية ${toAr(bookmark.ayahNumber)}</div>
+          ${bookmark.ayahText ? `<div class="font-amiri text-xs opacity-75 mt-0.5 truncate max-w-xs sm:max-w-md">«${bookmark.ayahText}»</div>` : ''}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end pt-1 sm:pt-0">
+        <button onclick="readSurah(${bookmark.surahNumber}, ${bookmark.ayahNumber})" class="btn-accent text-xs py-2 px-4 shadow-sm font-bold flex items-center gap-1.5 w-full sm:w-auto justify-center">
+          <i class="fa-solid fa-book-open"></i>
+          <span>واصل القراءة</span>
+          <i class="fa-solid fa-arrow-left text-[10px]"></i>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// الواجهة الرئيسية للقرآن الكريم (الفهارس الأربعة)
+async function openQuranModule(pushState = true) {
   setSubViewTitle('<i class="fa-solid fa-book-quran" style="color:var(--accent)"></i> القرآن الكريم');
+  currentReadingSurah = null;
+  currentReadingPage = null;
 
   const bookmark = ls('quran_bookmark', null);
 
   const html = `
-    <!-- محرك البحث والعلامة المرجعية -->
-    <div class="space-y-4 mb-6">
-      ${bookmark ? `
-        <div class="card p-4 border-amber-300 bg-amber-500/5 flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <i class="fa-solid fa-bookmark text-amber-500 text-xl"></i>
-            <div>
-              <div class="font-bold text-sm">العلامة المرجعية الأخيرة</div>
-              <div class="text-xs" style="color:var(--text-muted)">سورة ${bookmark.surahName} - آية ${toAr(bookmark.ayahNumber)}</div>
-            </div>
-          </div>
-          <button onclick="readSurah(${bookmark.surahNumber}, ${bookmark.ayahNumber})" class="btn-accent text-xs">
-            متابعة القراءة
-          </button>
-        </div>
-      ` : ''}
+    <!-- كارت العلامة المرجعية البارز -->
+    <div id="quranHeroBookmarkWrap">
+      ${bookmark ? renderQuranHeroBookmarkCard(bookmark) : ''}
+    </div>
 
-      <div class="relative">
+    <!-- شريط التبويبات الأربعة (السور، الأجزاء، الصفحات، بحث الآيات) -->
+    <div class="flex items-center gap-1.5 p-1 rounded-2xl border mb-5 overflow-x-auto scrollbar-none" style="background:var(--bg-card); border-color:var(--border-color)">
+      <button id="quranTabBtn_surahs" onclick="switchQuranTab('surahs')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-list-ol"></i>
+        <span>السور (١١٤)</span>
+      </button>
+      <button id="quranTabBtn_juz" onclick="switchQuranTab('juz')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-layer-group"></i>
+        <span>الأجزاء (٣٠)</span>
+      </button>
+      <button id="quranTabBtn_pages" onclick="switchQuranTab('pages')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-book-open"></i>
+        <span>الصفحات (٦٠٤)</span>
+      </button>
+      <button id="quranTabBtn_search" onclick="switchQuranTab('search')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span>بحث الآيات</span>
+      </button>
+    </div>
+
+    <!-- 1. تبويب السور الـ 114 -->
+    <div id="quranTabContent_surahs">
+      <div class="relative mb-4">
         <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
-        <input type="text" id="surahSearchInput" oninput="filterSurahsList(this.value)" placeholder="ابحث باسم السورة أو رقمها (مثال: الكهف، البقرة، 18)..." class="inp w-full pr-11 text-sm">
+        <input type="text" id="surahSearchInput" oninput="filterSurahsList(this.value)" placeholder="ابحث باسم السورة أو رقمها (مثال: الكهف، البقرة، 18)..." class="inp w-full pr-11 text-sm font-semibold">
+      </div>
+
+      <div id="surahsListGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        ${Array(12).fill('<div class="skeleton h-20"></div>').join('')}
       </div>
     </div>
 
-    <!-- شبكة قائمة السور الـ 114 -->
-    <div id="surahsListGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      ${Array(12).fill('<div class="skeleton h-20"></div>').join('')}
+    <!-- 2. تبويب الأجزاء الـ 30 -->
+    <div id="quranTabContent_juz" hidden>
+      <div id="juzListGrid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <!-- يتم إنشاؤه عبر renderJuzGrid() -->
+      </div>
+    </div>
+
+    <!-- 3. تبويب الصفحات الـ 604 -->
+    <div id="quranTabContent_pages" hidden>
+      <div class="card p-5 mb-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-sm flex items-center gap-2">
+            <i class="fa-solid fa-book-bookmark" style="color:var(--accent)"></i>
+            <span>الانتقال السريع لصفحات المصحف الشريف (٦٠٤ صفحة)</span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <input type="number" id="quickPageNumberInput" min="1" max="604" placeholder="أدخل رقم الصفحة (1 - 604)..." class="inp flex-1 text-sm font-bold">
+          <button onclick="readQuranPage($('#quickPageNumberInput').value)" class="btn-accent text-xs py-2 px-5 font-bold shrink-0">
+            فتح الصفحة <i class="fa-solid fa-arrow-left mr-1"></i>
+          </button>
+        </div>
+        <div class="pt-2 border-t" style="border-color:var(--border-color)">
+          <div class="text-xs font-bold mb-2" style="color:var(--text-muted)">تصفح صفحات الأجزاء:</div>
+          <div class="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1" id="pagesJuzFilterPills">
+            <!-- أزرار الأجزاء -->
+          </div>
+        </div>
+      </div>
+
+      <div id="pagesListGrid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
+        <!-- أزرار الصفحات -->
+      </div>
+    </div>
+
+    <!-- 4. تبويب البحث بالآيات والكلمات -->
+    <div id="quranTabContent_search" hidden>
+      <div class="card p-5 mb-5 space-y-4">
+        <div>
+          <h3 class="font-bold text-base mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass" style="color:var(--accent)"></i>
+            <span>البحث بالآية والكلمة في القرآن الكريم</span>
+          </h3>
+          <p class="text-xs" style="color:var(--text-muted)">
+            ابحث عن أي آية أو كلمة، وستظهر النتائج مرتبة مع أولوية السورة المختارة وإمكانية الانتقال المباشر.
+          </p>
+        </div>
+
+        <div class="space-y-2.5">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="tabAyahSearchInput" oninput="handleAyahSearchInput(this.value)" placeholder="اكتب كلمة أو جملة من الآية (مثال: الله نور، أقم الصلاة، والضحى)..." class="inp w-full pr-11 text-sm font-bold">
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 pt-1 text-xs">
+            <span class="font-bold" style="color:var(--text-muted)">أولوية البحث لسورة معينة:</span>
+            <select id="tabSearchSurahScope" onchange="currentSearchPreferredSurah = this.value ? parseInt(this.value) : null; handleAyahSearchInput($('#tabAyahSearchInput').value)" class="inp py-1.5 px-3 text-xs font-bold rounded-xl">
+              <option value="">جميع سور القرآن الكريم (١١٤ سورة بالتساوي)</option>
+              ${SURAH_NAMES_AR.map((name, idx) => `
+                <option value="${idx + 1}">سورة ${name}</option>
+              `).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="ayahSearchResults" class="space-y-3">
+        <div class="card p-6 text-center text-xs" style="color:var(--text-muted)">
+          <i class="fa-solid fa-feather-pointed text-2xl mb-2 opacity-40"></i>
+          <div>اكتب كلمة أو جملة من الآية أعلاه لبدء البحث الفوري في المصحف...</div>
+        </div>
+      </div>
     </div>
   `;
 
-  renderSubView(html);
+  renderSubView(html, pushState);
+  switchQuranTab(currentQuranTab || 'surahs');
 
   try {
     if (!allSurahsCache) {
@@ -1507,59 +1811,340 @@ async function openQuranModule() {
   }
 }
 
+// التبديل بين تبويبات المصحف الأربعة
+function switchQuranTab(tabName) {
+  currentQuranTab = tabName;
+  ['surahs', 'juz', 'pages', 'search'].forEach(t => {
+    const btn = $(`#quranTabBtn_${t}`);
+    const content = $(`#quranTabContent_${t}`);
+    if (btn) {
+      if (t === tabName) {
+        btn.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap bg-accent text-white shadow-sm';
+        btn.style.backgroundColor = 'var(--accent)';
+        btn.style.color = '#FFFFFF';
+      } else {
+        btn.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap';
+        btn.style.backgroundColor = 'transparent';
+        btn.style.color = 'var(--text-muted)';
+      }
+    }
+    if (content) {
+      content.hidden = (t !== tabName);
+    }
+  });
+
+  if (tabName === 'juz') {
+    renderJuzGrid();
+  } else if (tabName === 'pages') {
+    renderPagesGrid();
+  }
+}
+
+// عرض شبكة السور الـ 114 مع شارة العلامة المحفوظة
 function renderSurahsGrid(surahs) {
   const container = $('#surahsListGrid');
   if (!container) return;
 
-  container.innerHTML = surahs.map(s => `
-    <div onclick="readSurah(${s.number})" class="card p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-400 transition hover:-translate-y-0.5">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border" style="border-color:var(--border-color); color:var(--accent); background:var(--accent-soft)">
-          ${toAr(s.number)}
-        </div>
-        <div>
-          <div class="font-bold text-base flex items-center gap-2">
-            <span>سورة ${s.name}</span>
+  const bookmark = ls('quran_bookmark', null);
+
+  container.innerHTML = surahs.map(s => {
+    const isBookmarkedHere = bookmark && bookmark.surahNumber === s.number;
+    return `
+      <div onclick="readSurah(${s.number})" class="card p-3.5 flex items-center justify-between cursor-pointer hover:border-rose-400 transition hover:-translate-y-0.5 ${isBookmarkedHere ? 'border-amber-400 bg-amber-500/5' : ''}">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm border" style="border-color:var(--border-color); color:var(--accent); background:var(--accent-soft)">
+            ${toAr(s.number)}
           </div>
-          <div class="text-xs" style="color:var(--text-muted)">${toAr(s.numberOfAyahs)} آية • ${s.revelationType === 'Meccan' ? 'مكية' : 'مدنية'}</div>
+          <div>
+            <div class="font-bold text-base flex items-center gap-2">
+              <span>سورة ${s.name}</span>
+              ${isBookmarkedHere ? `
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-xs">
+                  <i class="fa-solid fa-bookmark text-[8px]"></i> آية ${toAr(bookmark.ayahNumber)}
+                </span>
+              ` : ''}
+            </div>
+            <div class="text-xs" style="color:var(--text-muted)">${toAr(s.numberOfAyahs)} آية • ${s.revelationType === 'Meccan' ? 'مكية' : 'مدنية'}</div>
+          </div>
         </div>
+        <i class="fa-solid fa-chevron-left text-xs opacity-50"></i>
       </div>
-      <i class="fa-solid fa-chevron-left text-xs opacity-50"></i>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function filterSurahsList(query) {
   if (!allSurahsCache) return;
   const q = query.trim().toLowerCase();
+  const cleanQ = cleanArabicText(q);
   const filtered = allSurahsCache.filter(s => 
-    s.name.includes(q) || 
+    cleanArabicText(s.name).includes(cleanQ) || 
     s.englishName.toLowerCase().includes(q) || 
     String(s.number) === q
   );
   renderSurahsGrid(filtered);
 }
 
-// عرض السورة وقراءة آياتها
-async function readSurah(surahNum, targetAyah = null) {
-  setSubViewTitle('<i class="fa-solid fa-book-open" style="color:var(--accent)"></i> جاري تحميل السورة...');
+// عرض شبكة الأجزاء الـ 30
+function renderJuzGrid() {
+  const container = $('#juzListGrid');
+  if (!container) return;
+  container.innerHTML = QURAN_JUZ_DATA.map(j => `
+    <div onclick="readSurah(${j.surah}, ${j.ayah})" class="card p-4 flex flex-col justify-between cursor-pointer hover:border-rose-400 transition hover:-translate-y-0.5">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs border" style="border-color:var(--border-color); color:var(--accent); background:var(--accent-soft)">
+            ${toAr(j.juz)}
+          </div>
+          <div class="font-extrabold text-sm sm:text-base">الجزء ${toAr(j.juz)}</div>
+        </div>
+        <span class="text-[11px] font-bold px-2 py-0.5 rounded-md border" style="border-color:var(--border-color); color:var(--text-muted)">
+          ص ${toAr(j.page)}
+        </span>
+      </div>
+      <div class="my-2">
+        <div class="font-amiri text-lg font-bold" style="color:var(--accent)">﴿${j.name}﴾</div>
+        <div class="text-xs mt-1" style="color:var(--text-muted)">يبدأ من: سورة ${j.surahName} • آية ${toAr(j.ayah)}</div>
+      </div>
+      <div class="pt-2 border-t flex items-center justify-between text-xs font-bold" style="border-color:var(--border-color); color:var(--accent)">
+        <span>بدء قراءة الجزء</span>
+        <i class="fa-solid fa-arrow-left text-[11px]"></i>
+      </div>
+    </div>
+  `).join('');
+}
+
+// عرض شبكة الصفحات الـ 604
+function renderPagesGrid(selectedJuz = null) {
+  const pillsContainer = $('#pagesJuzFilterPills');
+  if (pillsContainer && pillsContainer.children.length === 0) {
+    pillsContainer.innerHTML = `
+      <button onclick="filterPagesByJuz(null)" id="juzPill_all" class="pill text-xs py-1 px-2.5 font-bold" style="background:var(--accent); color:#fff">كل الصفحات (٦٠٤)</button>
+      ${QURAN_JUZ_DATA.map(j => `
+        <button onclick="filterPagesByJuz(${j.juz})" id="juzPill_${j.juz}" class="pill text-xs py-1 px-2.5 font-bold">
+          جزء ${toAr(j.juz)}
+        </button>
+      `).join('')}
+    `;
+  }
+
+  const grid = $('#pagesListGrid');
+  if (!grid) return;
+
+  let start = 1;
+  let end = 604;
+
+  if (selectedJuz) {
+    const cur = QURAN_JUZ_DATA.find(j => j.juz === selectedJuz);
+    const next = QURAN_JUZ_DATA.find(j => j.juz === selectedJuz + 1);
+    start = cur ? cur.page : 1;
+    end = next ? (next.page - 1) : 604;
+  }
+
+  const pages = [];
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  grid.innerHTML = pages.map(p => `
+    <button onclick="readQuranPage(${p})" class="p-2 rounded-xl text-center font-bold text-xs border transition hover:scale-105 active:scale-95" style="border-color:var(--border-color); background:var(--bg-card)">
+      ${toAr(p)}
+    </button>
+  `).join('');
+}
+
+function filterPagesByJuz(juz) {
+  $$('#pagesJuzFilterPills button').forEach(b => {
+    b.style.backgroundColor = 'transparent';
+    b.style.color = 'inherit';
+  });
+  const activeBtn = juz ? $(`#juzPill_${juz}`) : $(`#juzPill_all`);
+  if (activeBtn) {
+    activeBtn.style.backgroundColor = 'var(--accent)';
+    activeBtn.style.color = '#FFFFFF';
+  }
+  renderPagesGrid(juz);
+}
+
+// عرض صفحة المصحف بالتفصيل (Page Reader)
+async function readQuranPage(pageNum, pushState = true) {
+  pageNum = Math.max(1, Math.min(604, parseInt(pageNum) || 1));
+  currentReadingPage = pageNum;
+  currentReadingSurah = null;
+
+  setSubViewTitle(`<i class="fa-solid fa-book-open" style="color:var(--accent)"></i> صفحة ${toAr(pageNum)} من ٦٠٤`);
+  const backText = $('#subViewBackBtnText');
+  if (backText) backText.textContent = 'فهرس المصحف';
+
+  if (pushState && !isHandlingPopState) {
+    history.pushState({ screen: 'quranPage', pageNum }, '');
+  }
 
   const html = `
-    <!-- شريط أدوات القارئ -->
+    <!-- شريط أدوات قارئ الصفحة -->
     <div class="card p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md bg-opacity-90">
       <div class="flex items-center gap-2">
-        <button onclick="openQuranModule()" class="pill text-xs py-1.5 px-3">
-          <i class="fa-solid fa-list ml-1"></i> فهرس السور
+        <button onclick="openQuranModule(false)" class="pill text-xs py-1.5 px-3">
+          <i class="fa-solid fa-list ml-1"></i> فهرس المصحف
         </button>
-        <span id="readingSurahTitleBadge" class="font-bold text-sm">--</span>
+        <span id="pageTitleBadge" class="font-bold text-xs sm:text-sm">صفحة ${toAr(pageNum)}</span>
       </div>
 
-      <div class="flex items-center gap-2">
-        <span class="text-xs" style="color:var(--text-muted)">حجم الخط:</span>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-xs" style="color:var(--text-muted)">الخط:</span>
         <button onclick="changeQuranFontSize(-2)" class="pill text-xs py-1 px-2.5 font-bold">A-</button>
         <button onclick="changeQuranFontSize(2)" class="pill text-xs py-1 px-2.5 font-bold">A+</button>
-        <button onclick="playFullSurahAudio(${surahNum})" class="btn-accent text-xs py-1.5 px-3">
-          <i class="fa-solid fa-play ml-1"></i> تلاوة السورة
+        <div class="flex items-center gap-1 mr-1">
+          <button onclick="readQuranPage(${pageNum - 1})" ${pageNum <= 1 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="pill text-xs py-1.5 px-2.5 font-bold"'} title="الصفحة السابقة">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+          <button onclick="readQuranPage(${pageNum + 1})" ${pageNum >= 604 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="pill text-xs py-1.5 px-2.5 font-bold"'} title="الصفحة التالية">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- نص صفحة المصحف الشريف -->
+    <div class="card p-6 sm:p-10 mb-6 border-2" style="border-color:var(--border-color); background-color:var(--bg-card)">
+      <div id="pageMetaHeader" class="flex items-center justify-between pb-3 mb-5 border-b text-xs font-bold" style="border-color:var(--border-color); color:var(--text-muted)">
+        <span id="pageSurahName">جاري التحميل...</span>
+        <span id="pageJuzInfo">--</span>
+      </div>
+
+      <div id="quranPageBody" class="quran-verse leading-loose text-justify" style="font-size: ${quranFontSize}px">
+        ${Array(8).fill('<div class="skeleton h-8 my-2"></div>').join('')}
+      </div>
+
+      <div class="flex items-center justify-between pt-4 mt-6 border-t text-xs" style="border-color:var(--border-color)">
+        <button onclick="readQuranPage(${pageNum - 1})" ${pageNum <= 1 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="btn-accent text-xs py-1.5 px-3"'}>
+          <i class="fa-solid fa-arrow-right ml-1"></i> الصفحة السابقة (${toAr(pageNum - 1)})
+        </button>
+        <span class="font-extrabold text-sm px-3 py-1 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300">
+          صفحة ${toAr(pageNum)} من ٦٠٤
+        </span>
+        <button onclick="readQuranPage(${pageNum + 1})" ${pageNum >= 604 ? 'disabled class="pill text-xs opacity-40 cursor-not-allowed"' : 'class="btn-accent text-xs py-1.5 px-3"'}>
+          الصفحة التالية (${toAr(pageNum + 1)}) <i class="fa-solid fa-arrow-left mr-1"></i>
+        </button>
+      </div>
+    </div>
+  `;
+
+  renderSubView(html, false);
+
+  try {
+    const res = await fetchJSON(`https://api.alquran.cloud/v1/page/${pageNum}/quran-uthmani`);
+    const pageData = res.data;
+    const ayahs = pageData.ayahs || [];
+
+    if (ayahs.length === 0) {
+      $('#quranPageBody').innerHTML = '<div class="text-center p-4">لا توجد آيات في هذه الصفحة.</div>';
+      return;
+    }
+
+    const firstAyah = ayahs[0];
+    const surahNamesOnPage = [...new Set(ayahs.map(a => a.surah.name))].join(' و ');
+    $('#pageSurahName').textContent = surahNamesOnPage;
+    $('#pageJuzInfo').textContent = `الجزء ${toAr(firstAyah.juz)}`;
+    $('#pageTitleBadge').textContent = `${surahNamesOnPage} - ص ${toAr(pageNum)}`;
+
+    const bookmark = ls('quran_bookmark', null);
+    let currentSurahOnPage = null;
+    let pageHtml = '';
+
+    ayahs.forEach(ayah => {
+      if (ayah.surah.number !== currentSurahOnPage) {
+        currentSurahOnPage = ayah.surah.number;
+        pageHtml += `
+          <div class="text-center my-4 py-2 px-4 rounded-xl border border-dashed" style="border-color:var(--border-color); background:var(--accent-soft)">
+            <div class="font-bold text-sm sm:text-base" style="color:var(--accent)">سورة ${ayah.surah.name}</div>
+            ${ayah.surah.number !== 1 && ayah.surah.number !== 9 && ayah.numberInSurah === 1 ? `
+              <div class="font-amiri text-xl font-bold mt-1 text-slate-700 dark:text-slate-300">
+                بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      let t = ayah.text;
+      if (ayah.surah.number !== 1 && ayah.surah.number !== 9 && ayah.numberInSurah === 1) {
+        t = t.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', '').trim();
+      }
+
+      const isBookmarked = bookmark && bookmark.surahNumber === ayah.surah.number && bookmark.ayahNumber === ayah.numberInSurah;
+
+      pageHtml += `
+        <span id="ayahSpan_${ayah.numberInSurah}" class="inline relative rounded px-1 transition ${isBookmarked ? 'bg-amber-500/25 ring-2 ring-amber-400 p-1 rounded font-bold' : 'hover:bg-rose-500/10'}">
+          ${isBookmarked ? '<span class="bg-amber-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold mx-1 align-middle">🔖 موضع وقوفك</span>' : ''}
+          <span onclick="openAyahDetailModal(${ayah.surah.number}, ${ayah.numberInSurah}, '${ayah.surah.name.replace(/'/g, '')}')" class="cursor-pointer" title="انقر لعرض التفسير والاستماع">
+            ${t}
+          </span>
+          <span class="ayah-num cursor-pointer" onclick="openAyahDetailModal(${ayah.surah.number}, ${ayah.numberInSurah}, '${ayah.surah.name.replace(/'/g, '')}')">﴿${toAr(ayah.numberInSurah)}﴾</span>
+          <button onclick="saveBookmark(${ayah.surah.number}, ${ayah.numberInSurah}, '${ayah.surah.name.replace(/'/g, '')}', '${ayah.text.substring(0, 80).replace(/'/g, '')}', event)" class="inline-block p-1 text-amber-500 opacity-40 hover:opacity-100 hover:scale-125 transition align-middle" title="حفظ علامة الوقوف هنا">
+            <i class="${isBookmarked ? 'fa-solid' : 'fa-regular'} fa-bookmark"></i>
+          </button>
+        </span>
+      `;
+    });
+
+    $('#quranPageBody').innerHTML = pageHtml;
+  } catch (err) {
+    $('#quranPageBody').innerHTML = '<div class="text-center p-4">تعذر تحميل بيانات الصفحة. تحقق من الاتصال.</div>';
+  }
+}
+
+// عرض السورة وقراءة آياتها (Surah Reader)
+async function readSurah(surahNum, targetAyah = null, pushState = true) {
+  setSubViewTitle('<i class="fa-solid fa-book-open" style="color:var(--accent)"></i> جاري تحميل السورة...');
+  currentReadingSurah = { number: surahNum, name: SURAH_NAMES_AR[surahNum - 1] || '' };
+  currentReadingPage = null;
+
+  const backText = $('#subViewBackBtnText');
+  if (backText) backText.textContent = 'فهرس المصحف';
+
+  if (pushState && !isHandlingPopState) {
+    history.pushState({ screen: 'quranSurah', surahNum }, '');
+  }
+
+  const bookmark = ls('quran_bookmark', null);
+  const hasBookmarkInSurah = bookmark && bookmark.surahNumber === surahNum;
+
+  const html = `
+    <!-- شريط أدوات القارئ مع علامة الوقوف والبحث -->
+    <div class="card p-3.5 mb-5 flex flex-wrap items-center justify-between gap-3 sticky top-16 z-30 backdrop-blur-md bg-opacity-90">
+      <div class="flex items-center gap-2">
+        <button onclick="openQuranModule(false)" class="pill text-xs py-1.5 px-3 font-bold">
+          <i class="fa-solid fa-list ml-1"></i> فهرس المصحف
+        </button>
+        <span id="readingSurahTitleBadge" class="font-bold text-xs sm:text-sm">--</span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- زر البحث المباشر في آيات هذه السورة وباقي المصحف -->
+        <button onclick="openAyahSearchFromReader(${surahNum}, '${SURAH_NAMES_AR[surahNum - 1] || ''}')" class="pill text-xs py-1.5 px-2.5 font-bold hover:border-accent transition" title="بحث في آيات هذه السورة وباقي المصحف">
+          <i class="fa-solid fa-magnifying-glass ml-1 text-rose-500"></i> بحث بالآية
+        </button>
+
+        <!-- زر علامة الوقوف البارز -->
+        <div id="readerBookmarkBtnWrap">
+          ${hasBookmarkInSurah ? `
+            <button onclick="scrollToBookmarkedAyah(${bookmark.ayahNumber})" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-500 text-white shadow-sm hover:opacity-90 transition animate-pulse" title="انقر للانتقال لموضع وقوفك في هذه السورة">
+              <i class="fa-solid fa-bookmark"></i>
+              <span>علامتك: آية ${toAr(bookmark.ayahNumber)}</span>
+            </button>
+          ` : `
+            <button onclick="quickBookmarkPrompt(${surahNum}, '${SURAH_NAMES_AR[surahNum - 1] || ''}')" class="pill text-xs py-1.5 px-2.5 font-bold hover:border-amber-400 hover:text-amber-600 transition" title="حفظ علامة الوقوف في هذه السورة">
+              <i class="fa-regular fa-bookmark ml-1 text-amber-500"></i> حفظ علامة
+            </button>
+          `}
+        </div>
+
+        <span class="text-xs" style="color:var(--text-muted)">الخط:</span>
+        <button onclick="changeQuranFontSize(-2)" class="pill text-xs py-1 px-2.5 font-bold">A-</button>
+        <button onclick="changeQuranFontSize(2)" class="pill text-xs py-1 px-2.5 font-bold">A+</button>
+        <button onclick="playFullSurahAudio(${surahNum})" class="btn-accent text-xs py-1.5 px-3 font-bold">
+          <i class="fa-solid fa-play ml-1"></i> تلاوة
         </button>
       </div>
     </div>
@@ -1578,27 +2163,39 @@ async function readSurah(surahNum, targetAyah = null) {
     </div>
   `;
 
-  renderSubView(html);
+  renderSubView(html, false);
 
   try {
     const res = await fetchJSON(`https://api.alquran.cloud/v1/surah/${surahNum}/quran-uthmani`);
     currentReadingSurah = res.data;
-    
+
     setSubViewTitle(`سورة ${currentReadingSurah.name}`);
     $('#readingSurahTitleBadge').textContent = `سورة ${currentReadingSurah.name} (${toAr(currentReadingSurah.numberOfAyahs)} آية)`;
 
-    // صياغة النص القرآني المتصل بجمالية المصحف
+    const currentBookmark = ls('quran_bookmark', null);
+
     const ayahsHtml = currentReadingSurah.ayahs.map(ayah => {
       let t = ayah.text;
-      // إزالة البسملة المكررة من أول الآية إذا كانت موجودة لغير الفاتحة
       if (surahNum !== 1 && surahNum !== 9 && ayah.numberInSurah === 1) {
         t = t.replace('بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ', '').trim();
       }
 
+      const isBookmarked = currentBookmark && currentBookmark.surahNumber === surahNum && currentBookmark.ayahNumber === ayah.numberInSurah;
+
       return `
-        <span id="ayahSpan_${ayah.numberInSurah}" onclick="openAyahDetailModal(${surahNum}, ${ayah.numberInSurah}, '${currentReadingSurah.name.replace(/'/g, '')}')" class="hover:bg-rose-500/10 rounded px-1 cursor-pointer transition" title="انقر لعرض التفسير والاستماع">
-          ${t}
-          <span class="ayah-num">﴿${toAr(ayah.numberInSurah)}﴾</span>
+        <span id="ayahSpan_${ayah.numberInSurah}" class="inline relative rounded px-1 transition ${isBookmarked ? 'bg-amber-500/20 ring-2 ring-amber-400 p-1.5 rounded-lg' : 'hover:bg-rose-500/10'}">
+          ${isBookmarked ? `
+            <span class="inline-flex items-center gap-1 bg-amber-500 text-white px-2 py-0.5 rounded-md text-[11px] font-bold shadow-xs mx-1 align-middle">
+              <i class="fa-solid fa-bookmark text-[9px]"></i> موضع وقوفك
+            </span>
+          ` : ''}
+          <span onclick="openAyahDetailModal(${surahNum}, ${ayah.numberInSurah}, '${currentReadingSurah.name.replace(/'/g, '')}')" class="cursor-pointer" title="انقر لعرض التفسير والاستماع">
+            ${t}
+          </span>
+          <span class="ayah-num cursor-pointer" onclick="openAyahDetailModal(${surahNum}, ${ayah.numberInSurah}, '${currentReadingSurah.name.replace(/'/g, '')}')">﴿${toAr(ayah.numberInSurah)}﴾</span>
+          <button onclick="saveBookmark(${surahNum}, ${ayah.numberInSurah}, '${currentReadingSurah.name.replace(/'/g, '')}', '${ayah.text.substring(0, 80).replace(/'/g, '')}', event)" class="inline-block p-1 text-amber-500 opacity-40 hover:opacity-100 hover:scale-125 transition align-middle" title="حفظ علامة الوقوف عند هذه الآية">
+            <i class="${isBookmarked ? 'fa-solid' : 'fa-regular'} fa-bookmark"></i>
+          </button>
         </span>
       `;
     }).join(' ');
@@ -1610,9 +2207,12 @@ async function readSurah(surahNum, targetAyah = null) {
         const el = $(`#ayahSpan_${targetAyah}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('bg-amber-500/20');
+          el.classList.add('bg-amber-500/30', 'ring-2', 'ring-amber-500', 'rounded-lg');
+          setTimeout(() => {
+            el.classList.remove('ring-2', 'ring-amber-500');
+          }, 3500);
         }
-      }, 300);
+      }, 350);
     }
   } catch (e) {
     $('#quranTextBody').innerHTML = '<div class="text-center p-4">تعذر تحميل نص السورة. تحقق من الاتصال.</div>';
@@ -1624,10 +2224,44 @@ function changeQuranFontSize(delta) {
   sv('quran_font_size', quranFontSize);
   const body = $('#quranTextBody');
   if (body) body.style.fontSize = quranFontSize + 'px';
+  const pageBody = $('#quranPageBody');
+  if (pageBody) pageBody.style.fontSize = quranFontSize + 'px';
+}
+
+// التمرير السريع للآية المحفوظة
+function scrollToBookmarkedAyah(ayahNumber) {
+  const el = $(`#ayahSpan_${ayahNumber}`);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('bg-amber-500/30', 'ring-2', 'ring-amber-500');
+    setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-amber-500');
+    }, 3000);
+    showToast(`تم التمرير إلى موضع وقوفك عند آية ${toAr(ayahNumber)} 🔖`, 'info');
+  } else {
+    showToast(`الآية المحفوظة رقم ${toAr(ayahNumber)}`, 'info');
+  }
+}
+
+// طلب إدخال رقم الآية للحفظ السريع
+function quickBookmarkPrompt(surahNum, surahName) {
+  const input = prompt(`أدخل رقم الآية التي تريد حفظ علامة الوقوف عندها في سورة ${surahName}:`, "1");
+  if (!input) return;
+  const num = parseInt(input);
+  if (isNaN(num) || num < 1 || (currentReadingSurah && currentReadingSurah.numberOfAyahs && num > currentReadingSurah.numberOfAyahs)) {
+    showToast('رقم الآية غير صالح!', 'warn');
+    return;
+  }
+  saveBookmark(surahNum, num, surahName);
+  readSurah(surahNum, num, false);
 }
 
 // نافذة تفاصيل الآية (تفسير + استماع + حفظ علامة)
 async function openAyahDetailModal(surahNum, ayahInSurah, surahName) {
+  if (!isHandlingPopState) {
+    history.pushState({ screen: 'modal' }, '');
+  }
+
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
@@ -1674,8 +2308,8 @@ async function openAyahDetailModal(surahNum, ayahInSurah, surahName) {
           <button onclick="playAyahAudioDirect(${surahNum}, ${ayahInSurah})" class="btn-accent text-xs">
             <i class="fa-solid fa-play ml-1"></i> استماع للآية
           </button>
-          <button onclick="saveBookmark(${surahNum}, ${ayahInSurah}, '${surahName}')" class="pill text-xs">
-            <i class="fa-solid fa-bookmark ml-1"></i> حفظ كعلامة
+          <button onclick="saveBookmark(${surahNum}, ${ayahInSurah}, '${surahName}', '${quranData.text.substring(0, 80).replace(/'/g, '')}'); this.closest('.fixed').remove();" class="pill text-xs font-bold text-amber-600 dark:text-amber-400">
+            <i class="fa-solid fa-bookmark ml-1"></i> حفظ كعلامة وقوف
           </button>
         </div>
         <button onclick="copyText('${quranData.text.replace(/'/g, '')}')" class="pill text-xs">
@@ -1688,10 +2322,253 @@ async function openAyahDetailModal(surahNum, ayahInSurah, surahName) {
   }
 }
 
-function saveBookmark(surahNumber, ayahNumber, surahName) {
-  const bookmark = { surahNumber, ayahNumber, surahName, date: new Date().toISOString() };
+// حفظ علامة الوقوف والقراءة
+function saveBookmark(surahNumber, ayahNumber, surahName, ayahText = '', event = null) {
+  if (event) event.stopPropagation();
+  const bookmark = { 
+    surahNumber, 
+    ayahNumber, 
+    surahName, 
+    ayahText: (ayahText || '').trim(), 
+    date: new Date().toISOString(),
+    timestamp: Date.now()
+  };
   sv('quran_bookmark', bookmark);
-  showToast(`تم حفظ الآية (${toAr(ayahNumber)}) من سورة ${surahName} كعلامة مرجعية ✓`, 'success');
+  showToast(`تم حفظ الآية (${toAr(ayahNumber)}) من سورة ${surahName} كعلامة وقوف مرجعية ✓`, 'success');
+
+  renderHomeQuranBookmarkCard();
+
+  // تحديث الأزرار في شريط القارئ إذا كان مفتوحاً
+  const wrap = $('#readerBookmarkBtnWrap');
+  if (wrap && currentReadingSurah && currentReadingSurah.number === surahNumber) {
+    wrap.innerHTML = `
+      <button onclick="scrollToBookmarkedAyah(${ayahNumber})" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-500 text-white shadow-sm hover:opacity-90 transition animate-pulse">
+        <i class="fa-solid fa-bookmark"></i>
+        <span>علامتك: آية ${toAr(ayahNumber)}</span>
+      </button>
+    `;
+  }
+
+  // إذا كنا نقرأ السورة نفسها، أعد تنشيط تظليل الآية
+  if (currentReadingSurah && currentReadingSurah.number === surahNumber) {
+    $$('#quranTextBody span[id^="ayahSpan_"]').forEach(el => {
+      el.classList.remove('bg-amber-500/20', 'ring-2', 'ring-amber-400', 'p-1.5');
+    });
+    const targetEl = $(`#ayahSpan_${ayahNumber}`);
+    if (targetEl) {
+      targetEl.classList.add('bg-amber-500/20', 'ring-2', 'ring-amber-400', 'p-1.5');
+    }
+  }
+}
+
+// نافذة البحث بالآية المفتوحة من داخل السورة
+function openAyahSearchFromReader(surahNum, surahName) {
+  currentSearchPreferredSurah = surahNum;
+
+  if (!isHandlingPopState) {
+    history.pushState({ screen: 'modal' }, '');
+  }
+
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div class="card p-6 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl relative">
+      <div class="flex items-center justify-between pb-3 border-b mb-4" style="border-color:var(--border-color)">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i class="fa-solid fa-magnifying-glass" style="color:var(--accent)"></i>
+          <span>البحث في آيات القرآن الكريم</span>
+        </h3>
+        <button onclick="this.closest('.fixed').remove()" class="pill !p-1.5 text-xs"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-3 mb-4">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="readerAyahSearchInput" oninput="handleAyahSearchInput(this.value)" placeholder="اكتب كلمة أو آية للبحث (مثال: الله نور، أقم الصلاة)..." class="inp w-full pr-11 text-sm font-bold" autofocus>
+        </div>
+        <div class="flex items-center justify-between text-xs px-1" style="color:var(--text-muted)">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>الأولوية لنتائج <strong>سورة ${surahName}</strong> أولاً، ثم باقي سور القرآن</span>
+          </div>
+          <button onclick="currentSearchPreferredSurah = null; this.remove(); handleAyahSearchInput($('#readerAyahSearchInput').value);" class="underline text-xs" style="color:var(--accent)">
+            بحث في كل السور بالتساوي
+          </button>
+        </div>
+      </div>
+
+      <div id="ayahSearchResults" class="flex-1 overflow-y-auto space-y-3 pr-1">
+        <div class="card p-6 text-center text-xs" style="color:var(--text-muted)">
+          <i class="fa-solid fa-feather-pointed text-2xl mb-2 opacity-40"></i>
+          <div>اكتب كلمة أو جزءاً من الآية للبحث عنها فورياً في سورة ${surahName} وكافة سور القرآن...</div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+// معالجة البحث بالآية مع تأخير ذكي (Debounce)
+function handleAyahSearchInput(val) {
+  clearTimeout(ayahSearchDebounce);
+  const q = (val || '').trim();
+  const resContainer = $('#ayahSearchResults');
+  if (!resContainer) return;
+
+  if (q.length < 2) {
+    resContainer.innerHTML = `
+      <div class="card p-6 text-center text-xs" style="color:var(--text-muted)">
+        <i class="fa-solid fa-magnifying-glass text-2xl mb-2 opacity-40"></i>
+        <div>اكتب كلمة أو جملة من حرفين على الأقل للبحث...</div>
+      </div>
+    `;
+    return;
+  }
+
+  resContainer.innerHTML = `
+    <div class="card p-6 text-center text-xs" style="color:var(--text-muted)">
+      <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-rose-500"></i>
+      <div>جاري البحث في آيات المصحف الشريف...</div>
+    </div>
+  `;
+
+  ayahSearchDebounce = setTimeout(() => {
+    executeAyahSearch(q);
+  }, 450);
+}
+
+// تنفيذ استعلام البحث عن الآية عبر السيرفر
+async function executeAyahSearch(rawQuery) {
+  const cleanQ = cleanArabicText(rawQuery);
+  try {
+    const url = `https://api.alquran.cloud/v1/search/${encodeURIComponent(cleanQ)}/all/quran-simple-clean`;
+    const res = await fetchJSON(url);
+    const matches = (res.data && res.data.matches) ? res.data.matches : [];
+    renderAyahSearchResults(matches, rawQuery, currentSearchPreferredSurah);
+  } catch (err) {
+    const resContainer = $('#ayahSearchResults');
+    if (resContainer) {
+      resContainer.innerHTML = `
+        <div class="card p-6 text-center text-xs text-rose-500">
+          تعذر إتمام البحث. يرجى التأكد من اتصال الإنترنت وإعادة المحاولة.
+        </div>
+      `;
+    }
+  }
+}
+
+// عرض نتائج البحث مقسمة (السورة الحالية أولاً ثم باقي السور)
+function renderAyahSearchResults(matches, query, preferredSurahNumber) {
+  const container = $('#ayahSearchResults');
+  if (!container) return;
+
+  if (!matches || matches.length === 0) {
+    container.innerHTML = `
+      <div class="card p-6 text-center text-xs" style="color:var(--text-muted)">
+        <i class="fa-regular fa-face-frown text-2xl mb-2 opacity-50"></i>
+        <div>لم يتم العثور على أي آية تطابق «${query}». جرب كتابة جزء آخر من الآية بدون تشكيل.</div>
+      </div>
+    `;
+    return;
+  }
+
+  // في حال تحديد سورة معينة كأولوية (السورة التي نبحث فيها)
+  if (preferredSurahNumber) {
+    const inSurah = matches.filter(m => m.surah.number === preferredSurahNumber);
+    const otherSurahs = matches.filter(m => m.surah.number !== preferredSurahNumber);
+    const surahName = (inSurah[0]?.surah?.name) || (SURAH_NAMES_AR[preferredSurahNumber - 1] || 'السورة الحالية');
+
+    container.innerHTML = `
+      <div class="space-y-6">
+        <!-- 1. نتائج في السورة الحالية أولاً -->
+        <div>
+          <div class="card p-3 mb-3 bg-amber-500/10 border-amber-300 flex items-center justify-between">
+            <div class="font-bold text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
+              <i class="fa-solid fa-star text-amber-500"></i>
+              <span>نتائج في سورة ${surahName} (${toAr(inSurah.length)} نتيجة)</span>
+            </div>
+            <span class="text-xs font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-700 dark:text-amber-300">السورة التي تبحث فيها</span>
+          </div>
+          ${inSurah.length ? `
+            <div class="space-y-2.5">
+              ${inSurah.map(m => renderAyahMatchCard(m, query, true)).join('')}
+            </div>
+          ` : `
+            <div class="card p-4 text-center text-xs text-muted">لم ترد هذه العبارة في سورة ${surahName}.</div>
+          `}
+        </div>
+
+        <!-- 2. نتائج في باقي سور القرآن الكريم بعدها -->
+        <div>
+          <div class="card p-3 mb-3 bg-slate-100 dark:bg-slate-800 flex items-center justify-between">
+            <div class="font-bold text-sm flex items-center gap-2">
+              <i class="fa-solid fa-book-quran" style="color:var(--accent)"></i>
+              <span>نتائج في باقي سور القرآن الكريم (${toAr(otherSurahs.length)} نتيجة)</span>
+            </div>
+          </div>
+          ${otherSurahs.length ? `
+            <div class="space-y-2.5">
+              ${otherSurahs.map(m => renderAyahMatchCard(m, query, false)).join('')}
+            </div>
+          ` : `
+            <div class="card p-4 text-center text-xs text-muted">لا توجد نتائج إضافية في باقي سور القرآن.</div>
+          `}
+        </div>
+      </div>
+    `;
+  } else {
+    container.innerHTML = `
+      <div>
+        <div class="text-xs font-bold mb-3" style="color:var(--text-muted)">
+          تم العثور على <span style="color:var(--accent)">${toAr(matches.length)}</span> آية كريمة:
+        </div>
+        <div class="space-y-2.5">
+          ${matches.map(m => renderAyahMatchCard(m, query, false)).join('')}
+        </div>
+      </div>
+    `;
+  }
+}
+
+// صياغة بطاقة نتيجة الآية مع تظليل العبارة المبحوث عنها
+function renderAyahMatchCard(m, query, isHighlighted = false) {
+  let highlightedText = m.text;
+  try {
+    const cleanQ = cleanArabicText(query);
+    // تظليل ذكي للكلمات المطابقة
+    const words = cleanQ.split(/\s+/).filter(w => w.length > 1);
+    if (words.length) {
+      const pattern = words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+      const regex = new RegExp(`(${pattern})`, 'gi');
+      highlightedText = m.text.replace(regex, '<mark class="bg-amber-300 dark:bg-amber-500/40 text-black dark:text-white px-1 rounded font-bold">$1</mark>');
+    }
+  } catch (e) {}
+
+  return `
+    <div class="card p-4 transition hover:border-rose-400 ${isHighlighted ? 'border-amber-400 bg-amber-500/5' : ''}">
+      <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b" style="border-color:var(--border-color)">
+        <div class="font-bold text-sm flex items-center gap-2">
+          <span style="color:var(--accent)">سورة ${m.surah.name}</span>
+          <span class="text-xs font-normal" style="color:var(--text-muted)">• آية ${toAr(m.numberInSurah)}</span>
+        </div>
+        <button onclick="navigateToAyahFromSearch(${m.surah.number}, ${m.numberInSurah})" class="btn-accent text-xs py-1 px-3">
+          الانتقال للآية <i class="fa-solid fa-arrow-left mr-1"></i>
+        </button>
+      </div>
+      <div class="font-amiri text-lg leading-relaxed text-justify mb-2">
+        ${highlightedText}
+      </div>
+    </div>
+  `;
+}
+
+// الانتقال للآية المحددة من نتائج البحث
+function navigateToAyahFromSearch(surahNum, ayahNum) {
+  const modal = document.querySelector('.fixed.z-50:not(#toastContainer):not(#bottomAudioPlayer)');
+  if (modal) modal.remove();
+  readSurah(surahNum, ayahNum);
 }
 
 const SURAH_NAMES_AR = [
@@ -1721,7 +2598,17 @@ const RECITERS_LIST = [
   { id: 'minshawi', name: 'الشيخ محمد صديق المنشاوي (مرتل)', slug: 'muhammad-minshawi/r1', ayahId: 'ar.minshawi' },
   { id: 'husary', name: 'الشيخ محمود خليل الحصري', slug: 'mahmoud-husary/r1', ayahId: 'ar.husary' },
   { id: 'ghamdi', name: 'الشيخ سعد الغامدي', slug: 'saad-ghamdi/r1', ayahId: 'ar.alafasy' },
-  { id: 'ajmi', name: 'الشيخ أحمد بن علي العجمي', slug: 'ahmad-ajmi/r1', ayahId: 'ar.alafasy' }
+  { id: 'ajmi', name: 'الشيخ أحمد بن علي العجمي', slug: 'ahmad-ajmi/r1', ayahId: 'ar.alafasy' },
+  { id: 'shuraim', name: 'الشيخ سعود الشريم', slug: 'saud-shuraim/r1', ayahId: 'ar.alafasy' },
+  { id: 'abbad', name: 'الشيخ فارس عباد', slug: 'fares-abbad/r1', ayahId: 'ar.alafasy' },
+  { id: 'abkar', name: 'الشيخ إدريس أبكر', slug: 'idrees-abkar/r1', ayahId: 'ar.alafasy' },
+  { id: 'qatami', name: 'الشيخ ناصر القطامي', slug: 'nasser-qatami/r1', ayahId: 'ar.alafasy' },
+  { id: 'shatri', name: 'الشيخ أبو بكر الشاطري', slug: 'abubakr-shatri/r1', ayahId: 'ar.alafasy' },
+  { id: 'jibreel', name: 'الشيخ محمد جبريل', slug: 'muhammad-jibreel/r1', ayahId: 'ar.alafasy' },
+  { id: 'banna', name: 'الشيخ محمود علي البنا', slug: 'mahmoud-banna/r2', ayahId: 'ar.alafasy' },
+  { id: 'hudhaifi', name: 'الشيخ علي الحذيفي', slug: 'ali-hudhaifi/r3', ayahId: 'ar.alafasy' },
+  { id: 'refaat', name: 'الشيخ محمد رفعت', slug: 'muhammad-refaat/r1', ayahId: 'ar.alafasy' },
+  { id: 'sufi', name: 'الشيخ عبد الرشيد صوفي', slug: 'abdulrasheed-sufi/r3', ayahId: 'ar.alafasy' }
 ];
 
 const LIVE_RADIOS = [
@@ -2424,12 +3311,30 @@ function calculateZakat() {
 /* ==========================================================================
    11. آية اليوم وحديث اليوم العشوائي (Daily Ayah & Hadith)
    ========================================================================== */
-async function fetchRandomAyah() {
-  $('#dailyAyahText').textContent = 'جاري جلب آية كريمة...';
+async function fetchRandomAyah(forceRefresh = false) {
+  const cachedAyah = ls('cached_daily_ayah', null);
+  const todayStr = getTodayDateStr();
+
+  if (cachedAyah && !forceRefresh && cachedAyah.date === todayStr) {
+    $('#dailyAyahText').textContent = `﴿${cachedAyah.text}﴾`;
+    $('#dailyAyahMeta').innerHTML = `
+      <span>سورة ${cachedAyah.surahName} • آية ${toAr(cachedAyah.ayahNum)}</span>
+      <button onclick="copyText('${cachedAyah.text.replace(/'/g, '')}')" class="pill text-xs py-1 px-2.5">
+        <i class="fa-solid fa-copy"></i> نسخ
+      </button>
+    `;
+    return;
+  }
+
+  if (!cachedAyah) {
+    $('#dailyAyahText').textContent = 'جاري جلب آية كريمة...';
+  }
+
   try {
     const randomAyahNumber = Math.floor(Math.random() * 6236) + 1;
     const res = await fetchJSON(`https://api.alquran.cloud/v1/ayah/${randomAyahNumber}/quran-uthmani`);
     const d = res.data;
+    sv('cached_daily_ayah', { text: d.text, surahName: d.surah.name, ayahNum: d.numberInSurah, date: todayStr });
     $('#dailyAyahText').textContent = `﴿${d.text}﴾`;
     $('#dailyAyahMeta').innerHTML = `
       <span>سورة ${d.surah.name} • آية ${toAr(d.numberInSurah)}</span>
@@ -2438,13 +3343,30 @@ async function fetchRandomAyah() {
       </button>
     `;
   } catch (e) {
-    $('#dailyAyahText').textContent = '﴿إِنَّ مَعَ الْعُسْرِ يُسْرًا﴾';
-    $('#dailyAyahMeta').innerHTML = '<span>سورة الشرح - آية ٦</span>';
+    if (!cachedAyah) {
+      $('#dailyAyahText').textContent = '﴿إِنَّ مَعَ الْعُسْرِ يُسْرًا﴾';
+      $('#dailyAyahMeta').innerHTML = '<span>سورة الشرح - آية ٦</span>';
+    }
   }
 }
 
-function fetchRandomHadith() {
+function fetchRandomHadith(forceRefresh = false) {
+  const todayStr = getTodayDateStr();
+  const cachedHadith = ls('cached_daily_hadith', null);
+
+  if (cachedHadith && !forceRefresh && cachedHadith.date === todayStr) {
+    $('#dailyHadithText').textContent = `«${cachedHadith.text}»`;
+    $('#dailyHadithMeta').innerHTML = `
+      <span>${cachedHadith.source}</span>
+      <button onclick="copyText('«${cachedHadith.text.replace(/'/g, '')}» - ${cachedHadith.source}')" class="pill text-xs py-1 px-2.5">
+        <i class="fa-solid fa-copy"></i> نسخ
+      </button>
+    `;
+    return;
+  }
+
   const rand = BUILTIN_HADITHS[Math.floor(Math.random() * BUILTIN_HADITHS.length)];
+  sv('cached_daily_hadith', { text: rand.text, source: rand.source, date: todayStr });
   $('#dailyHadithText').textContent = `«${rand.text}»`;
   $('#dailyHadithMeta').innerHTML = `
     <span>${rand.source}</span>
@@ -2865,26 +3787,94 @@ function setSubViewTitle(title) {
   $('#subViewTitle').innerHTML = title;
 }
 
-function renderSubView(htmlContent) {
+// إدارة الملاحة والتنقل وزر الرجوع بالهاتف (Hardware Back Button Management)
+let isHandlingPopState = false;
+let lastBackPressTime = 0;
+
+function handleAppBackButton() {
+  if (currentReadingSurah !== null || currentReadingPage !== null) {
+    openQuranModule(false);
+  } else {
+    goHome();
+  }
+}
+
+function renderSubView(htmlContent, pushState = true) {
   $('#homeView').hidden = true;
   $('#subView').hidden = false;
   $('#subViewContent').innerHTML = htmlContent;
+  const backText = $('#subViewBackBtnText');
+  if (backText) backText.textContent = 'العودة للرئيسية';
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (pushState && !isHandlingPopState) {
+    history.pushState({ screen: 'subView' }, '');
+  }
 }
 
-function goHome() {
+function goHome(fromPopState = false) {
   $('#subView').hidden = true;
   $('#homeView').hidden = false;
+  currentReadingSurah = null;
+  currentReadingPage = null;
   ['home', 'tasks', 'quran', 'adhkar', 'tasbeeh'].forEach(t => {
     const btn = $(`#navBtn_${t}`);
     if (btn) btn.style.color = (t === 'home') ? 'var(--accent)' : 'var(--text-muted)';
   });
   renderDailyChallengeCard();
+  renderHomeQuranBookmarkCard();
   window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (!fromPopState && history.state?.screen && history.state.screen !== 'home') {
+    history.pushState({ screen: 'home' }, '');
+  }
 }
+
+// الاستماع لزر الرجوع الفعلي بالهاتف أو إيماءة السحب (Android Back Button / Gesture)
+window.addEventListener('popstate', (e) => {
+  isHandlingPopState = true;
+
+  // 1. إذا كان هناك أي نافذة منبثقة مفتوحة (مودال)، يتم إغلاقها فقط دون مغادرة الصفحة
+  const activeModals = document.querySelectorAll('.fixed.z-50:not(#toastContainer):not(#bottomAudioPlayer)');
+  if (activeModals && activeModals.length > 0) {
+    activeModals[activeModals.length - 1].remove();
+    isHandlingPopState = false;
+    return;
+  }
+
+  // 2. إذا كان المستخدم يقرأ سورة أو صفحة في المصحف، يعود لفهرس المصحف
+  if (currentReadingSurah !== null || currentReadingPage !== null) {
+    currentReadingSurah = null;
+    currentReadingPage = null;
+    openQuranModule(false);
+    isHandlingPopState = false;
+    return;
+  }
+
+  // 3. إذا كان المستخدم في أي شاشة فرعية (مهامي، الأذكار، المصحف، إلخ)، يعود للرئيسية
+  const subView = $('#subView');
+  if (subView && !subView.hidden) {
+    goHome(true);
+    isHandlingPopState = false;
+    return;
+  }
+
+  // 4. إذا كان في الشاشة الرئيسية: حماية من الخروج العرضي (الضغط المزدوج للخروج)
+  const now = Date.now();
+  if (now - lastBackPressTime < 2500) {
+    // يسمح للمتصفح بالخروج إذا ضغط مرتين خلال 2.5 ثانية
+  } else {
+    lastBackPressTime = now;
+    showToast('اضغط زر الرجوع مرة أخرى للخروج من التطبيق 🌿', 'info');
+    history.pushState({ screen: 'home' }, '');
+  }
+
+  isHandlingPopState = false;
+});
 
 // نافذة تعديل إعدادات حساب الصلاة
 function toggleCalcSettings() {
+  if (!isHandlingPopState) {
+    history.pushState({ screen: 'modal' }, '');
+  }
   const methods = [
     { id: 5, name: 'الهيئة المصرية العامة للمساحة (المعتمد في مصر)' },
     { id: 4, name: 'جامعة أم القرى بمكة المكرمة' },
@@ -3031,6 +4021,9 @@ if ('serviceWorker' in navigator) {
 
 /* نافذة المطور وعن التطبيق (About & Developer Modal) */
 function openAboutModal() {
+  if (!isHandlingPopState) {
+    history.pushState({ screen: 'modal' }, '');
+  }
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
@@ -3117,6 +4110,11 @@ function openAboutModal() {
    بدء تشغيل التطبيق (Bootstrapping)
    ========================================================================== */
 window.addEventListener('DOMContentLoaded', () => {
+  // تهيئة سجل الملاحة لمنع خروج التطبيق بالخطأ عند الضغط على زر الرجوع
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState({ screen: 'home' }, '');
+  }
+
   checkAndHideInstallPrompts();
   initThemes();
   initCitiesDropdown();
@@ -3133,6 +4131,7 @@ window.addEventListener('DOMContentLoaded', () => {
   fetchRandomAyah();
   fetchRandomHadith();
   renderDailyChallengeCard();
+  renderHomeQuranBookmarkCard();
 
   // معالجة اختصارات الشاشة الرئيسية
   const params = new URLSearchParams(window.location.search);

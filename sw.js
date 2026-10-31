@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rafiq-almuslim-v7';
+const CACHE_NAME = 'rafiq-almuslim-v9';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const STATIC_ASSETS = [
   './icon.svg'
 ];
 
-// التثبيت وتخزين الملفات الأساسية فورياً
+// التثبيت وتخزين الملفات الأساسية فورياً لفتح فوري بدون إنترنت
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -19,7 +19,7 @@ self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
-// تفعيل وتنظيف أي كاش قديم لتحديث النسخة
+// تفعيل وتنظيف أي كاش قديم لتحديث النسخة فورياً
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
@@ -36,21 +36,20 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// استراتيجية الجلب الذكية (Network First with Cache Fallback)
+// استراتيجية التشغيل الفوري (Stale-While-Revalidate / Cache First للأصول الثابتة)
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
-  // تخطي ملفات البث الصوتي المباشر والإذاعات لتعمل مباشرة من الشبكة
+  // تخطي ملفات التلاوات الصوتية المباشرة والإذاعات
   if (url.pathname.endsWith('.mp3') || url.hostname.includes('radio') || url.hostname.includes('stream')) {
     return;
   }
 
   e.respondWith(
     caches.match(e.request).then((cached) => {
-      // محاولة جلب أحدث نسخة من الشبكة أولاً
-      const fetchPromise = fetch(e.request).then((networkResponse) => {
+      // إطلاق استعلام الشبكة في الخلفية لتحديث الملفات دائماً بأحدث نسخة
+      const networkUpdate = fetch(e.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
-          // تحديث الكاش بالنسخة الأحدث في الخلفية
           if (url.origin === location.origin || url.hostname.includes('cdnjs') || url.hostname.includes('fonts.googleapis') || url.hostname.includes('tailwindcss')) {
             const resClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
@@ -58,11 +57,12 @@ self.addEventListener('fetch', (e) => {
         }
         return networkResponse;
       }).catch(() => {
-        // إذا انقطع الإنترنت، استخدم الكاش المخزن
+        // في حال عدم توفر اتصال بالإنترنت
         return cached || (e.request.destination === 'document' ? caches.match('./index.html') : null);
       });
 
-      return cached || fetchPromise;
+      // إذا كان الملف مخزناً، يتم إرجاعه فورياً (0ms) مع تحديثه في الخلفية
+      return cached || networkUpdate;
     })
   );
 });
