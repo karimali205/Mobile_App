@@ -5683,24 +5683,56 @@ function triggerPWAInstall() {
   }
 }
 
-// تسجيل الـ Service Worker مع دعم التحديث التلقائي الفوري
+// تسجيل الـ Service Worker مع دعم التحديث التلقائي الفوري (Network-First)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').then((reg) => {
-      // الاستماع لوجود تحديث جديد
+    navigator.serviceWorker.register('./sw.js?v=14').then((reg) => {
+      // إجبار فحص التحديث فورياً عند كل فتح للتطبيق
+      reg.update();
+
       reg.addEventListener('updatefound', () => {
         const newWorker = reg.installing;
         newWorker.addEventListener('statechange', () => {
           if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-            showToast('🔄 تم تحديث التطبيق إلى نسخة جديدة! اضغط هنا للتحديث', 'info');
-            setTimeout(() => { window.location.reload(); }, 2500);
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+            showToast('🔄 تم العثور على تحديث جديد! جاري التحديث الآن...', 'success');
+            setTimeout(() => { window.location.reload(); }, 1200);
           }
         });
       });
     }).catch((err) => {
       console.log('Service Worker registration skipped:', err);
     });
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   });
+}
+
+// دالة فرض التحديث الفوري ومسح أي كاش قديم
+async function forceAppUpdate() {
+  showToast('🔄 جاري حذف النسخة المخزنة وتنزيل أحدث نسخة من التطبيق...', 'info');
+  try {
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.unregister();
+      }
+    }
+  } catch (e) {}
+
+  setTimeout(() => {
+    window.location.href = window.location.pathname + '?reload=' + Date.now();
+  }, 600);
 }
 
 /* نافذة المطور وعن التطبيق (About & Developer Modal) */
@@ -5765,6 +5797,12 @@ function openAboutModal() {
           </div>
         </div>
       </div>
+
+      <!-- زر التحقق من التحديثات -->
+      <button onclick="forceAppUpdate()" class="w-full py-2.5 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 mb-4 transition border hover:bg-slate-50 active:scale-95 text-slate-800" style="border-color: #FECDD3; background: #FFF1F2;">
+        <i class="fa-solid fa-rotate text-rose-600"></i>
+        <span>التحقق من التحديثات وتحديث التطبيق فورياً</span>
+      </button>
 
       <!-- زر إرسال ملاحظات -->
       <a href="mailto:karimali12qw@gmail.com?subject=ملاحظات واقتراحات حول تطبيق رفيق المسلم" class="w-full py-3 text-center text-xs font-extrabold mb-5 shadow-md flex items-center justify-center gap-2 rounded-2xl text-white transition hover:shadow-lg active:scale-95" style="background: linear-gradient(135deg, #C81E51 0%, #9F1239 100%);">

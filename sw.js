@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rafiq-almuslim-v13';
+const CACHE_NAME = 'rafiq-almuslim-v14';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,34 +9,33 @@ const STATIC_ASSETS = [
   './icon.svg'
 ];
 
-// التثبيت وتخزين الملفات الأساسية فورياً لفتح فوري بدون إنترنت
+// التثبيت وتجاوز الانتظار فورياً
 self.addEventListener('install', (e) => {
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
-// تفعيل وتنظيف أي كاش قديم لتحديث النسخة فورياً
+// تفعيل وتنظيف كافة النسخ القديمة فورياً وإشعار كافة النوافذ المفتوحة
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((k) => {
           if (k !== CACHE_NAME) {
-            console.log('Clearing old cache:', k);
+            console.log('Clearing outdated cache:', k);
             return caches.delete(k);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// التعامل مع النقر على الإشعارات وفتح التطبيق فورياً
+// التعامل مع النقر على الإشعارات
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const targetUrl = event.notification.data?.url || './index.html';
@@ -55,24 +54,29 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// استقبال طلب إرسال إشعار من الصفحة والتطبيق
+// استقبال الرسائل من التطبيق
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, options } = event.data;
-    self.registration.showNotification(title, {
-      icon: './icon-192.png',
-      badge: './icon-192.png',
-      vibrate: [300, 150, 300, 150, 400],
-      dir: 'rtl',
-      lang: 'ar',
-      requireInteraction: true,
-      renotify: true,
-      ...options
-    });
+  if (event.data) {
+    if (event.data.type === 'SKIP_WAITING') {
+      self.skipWaiting();
+    } else if (event.data.type === 'SHOW_NOTIFICATION') {
+      const { title, options } = event.data;
+      self.registration.showNotification(title, {
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        vibrate: [300, 150, 300, 150, 400],
+        dir: 'rtl',
+        lang: 'ar',
+        requireInteraction: true,
+        renotify: true,
+        ...options
+      });
+    }
   }
 });
 
-// استراتيجية التشغيل الفوري (Stale-While-Revalidate / Cache First للأصول الثابتة)
+// استراتيجية التعامل مع الطلبات:
+// Network-First لصفحات HTML (لكي يصل أي تحديث يتم رفعه على جيت هب فورياً) مع Fallback للكاش عند انقطاع النت
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
@@ -81,9 +85,33 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  const isHTMLRequest = e.request.mode === 'navigate' || 
+                        e.request.destination === 'document' || 
+                        url.pathname.endsWith('.html') || 
+                        url.pathname.endsWith('/') || 
+                        url.pathname.endsWith('/mobile_app');
+
+  if (isHTMLRequest) {
+    // Network-First لصفحات HTML لضمان نزول التحديثات فورياً
+    e.respondWith(
+      fetch(e.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const resClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
+        }
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(e.request).then((cached) => {
+          return cached || caches.match('./index.html') || caches.match('./');
+        });
+      })
+    );
+    return;
+  }
+
+  // Cache-First للأصول الثابتة (أيقونات وخطوط وتصميم) مع تحديثها في الخلفية
   e.respondWith(
     caches.match(e.request).then((cached) => {
-      // إطلاق استعلام الشبكة في الخلفية لتحديث الملفات دائماً بأحدث نسخة
       const networkUpdate = fetch(e.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200 && networkResponse.type !== 'opaque') {
           if (url.origin === location.origin || url.hostname.includes('cdnjs') || url.hostname.includes('fonts.googleapis') || url.hostname.includes('tailwindcss')) {
@@ -92,12 +120,8 @@ self.addEventListener('fetch', (e) => {
           }
         }
         return networkResponse;
-      }).catch(() => {
-        // في حال عدم توفر اتصال بالإنترنت
-        return cached || (e.request.destination === 'document' ? caches.match('./index.html') : null);
-      });
+      }).catch(() => null);
 
-      // إذا كان الملف مخزناً، يتم إرجاعه فورياً (0ms) مع تحديثه في الخلفية
       return cached || networkUpdate;
     })
   );
