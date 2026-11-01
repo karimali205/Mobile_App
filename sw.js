@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rafiq-almuslim-v12';
+const CACHE_NAME = 'rafiq-almuslim-v13';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -62,9 +62,11 @@ self.addEventListener('message', (event) => {
     self.registration.showNotification(title, {
       icon: './icon-192.png',
       badge: './icon-192.png',
-      vibrate: [200, 100, 200, 100, 200],
+      vibrate: [300, 150, 300, 150, 400],
       dir: 'rtl',
       lang: 'ar',
+      requireInteraction: true,
+      renotify: true,
       ...options
     });
   }
