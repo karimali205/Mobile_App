@@ -2880,98 +2880,9 @@ function renderMushafSidebarJuzHTML(currentJuzNum) {
 // ==========================================================================
 // شريط خيارات الآية المنبثق التفاعلي (Interactive Floating Ayah Action Strip)
 // يظهر عند النقر على أي آية ليحافظ على صفاء ونظافة عرض المصحف الشريف
-// ==========================================================================
+let currentDrawerAyahs = [];
+let activeSelectedAyah = null;
 let activeSelectedAyahCardId = null;
-
-function openAyahActionStrip(surahNum, ayahNum, surahName, ayahText, pageNum = null) {
-  // إزالة أي شريط سابق
-  closeAyahActionStrip();
-
-  // تظليل الآية المحددة الحالية
-  activeSelectedAyahCardId = `drawerAyahCard_${surahNum}_${ayahNum}`;
-  const card = document.getElementById(activeSelectedAyahCardId);
-  if (card) {
-    card.classList.add('ring-2', 'ring-accent', 'border-accent', 'bg-amber-500/10');
-  }
-
-  const bookmark = ls('quran_bookmark', null);
-  const isBookmarked = bookmark && bookmark.surahNumber === surahNum && bookmark.ayahNumber === ayahNum;
-  const note = getAyahNote(surahNum, ayahNum);
-  const cleanSnippet = (ayahText || '').replace(/[\n\r]+/g, ' ').substring(0, 60);
-
-  const strip = document.createElement('div');
-  strip.id = 'floatingAyahActionStrip';
-  strip.className = 'fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4 shadow-2xl border-t animate-slideUp backdrop-blur-lg';
-  strip.style.backgroundColor = 'color-mix(in srgb, var(--bg-card) 96%, transparent)';
-  strip.style.borderColor = 'var(--border-color)';
-  strip.style.paddingBottom = 'max(0.75rem, env(safe-area-inset-bottom, 0px))';
-
-  strip.innerHTML = `
-    <div class="max-w-2xl mx-auto space-y-2.5">
-      <!-- الشريط العلوي المصغر للآية مع زر الإغلاق -->
-      <div class="flex items-center justify-between text-xs font-bold pb-2 border-b" style="border-color:var(--border-color); color:var(--text-muted)">
-        <div class="flex items-center gap-2 truncate">
-          <span class="font-black text-sm" style="color:var(--accent)">سورة ${surahName}</span>
-          <span>• آية ${toAr(ayahNum)}</span>
-          ${pageNum ? `<span class="text-[11px] px-2 py-0.5 rounded bg-accent-soft text-accent">صـ ${toAr(pageNum)}</span>` : ''}
-          <span class="hidden sm:inline font-normal truncate max-w-[200px]" style="color:var(--text-muted)">«${cleanSnippet}...»</span>
-        </div>
-        <button onclick="closeAyahActionStrip()" class="pill !p-1.5 text-xs text-rose-500 hover:bg-rose-500/10" title="إغلاق الشريط">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
-      </div>
-
-      <!-- عرض الخاطرة المحفوظة إن وُجدت -->
-      ${note ? `
-        <div class="p-2.5 rounded-xl border border-amber-400/50 bg-amber-500/10 text-xs flex items-center justify-between gap-2">
-          <div class="truncate flex items-center gap-1.5 font-medium text-amber-800 dark:text-amber-200">
-            <i class="fa-solid fa-note-sticky text-amber-500 shrink-0"></i>
-            <span class="truncate"><strong>خاطرتك:</strong> ${note.note}</span>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <button onclick="openAyahNoteModal(${surahNum}, ${ayahNum}, '${surahName}', `${cleanSnippet.replace(/'/g, '')}`, ${pageNum || 1})" class="text-amber-600 dark:text-amber-400 underline text-[11px] font-bold">تعديل</button>
-            <button onclick="deleteAyahNote(${surahNum}, ${ayahNum}, ${pageNum || 1}); openAyahActionStrip(${surahNum}, ${ayahNum}, '${surahName}', `${cleanSnippet.replace(/'/g, '')}`, ${pageNum});" class="text-rose-500 text-[11px]"><i class="fa-solid fa-trash-can"></i></button>
-          </div>
-        </div>
-      ` : ''}
-
-      <!-- أزرار الإجراءات المتكاملة للآية -->
-      <div class="grid grid-cols-5 gap-1.5 sm:gap-2 text-center select-none">
-        <!-- 1. حفظ علامة الوقوف -->
-        <button id="stripBookmarkBtn" onclick="toggleAyahBookmarkFromStrip(${surahNum}, ${ayahNum}, '${surahName}', `${cleanSnippet.replace(/'/g, '')}`, ${pageNum})" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95 ${isBookmarked ? 'bg-amber-500 text-white border-transparent' : 'text-amber-600 dark:text-amber-400'}" title="حفظ علامة وقوف">
-          <i class="${isBookmarked ? 'fa-solid' : 'fa-regular'} fa-bookmark text-sm"></i>
-          <span class="text-[10px] sm:text-[11px]">${isBookmarked ? 'علامتك ✓' : 'علامة توقف'}</span>
-        </button>
-
-        <!-- 2. التفسير الميسر -->
-        <button onclick="openAyahDetailModal(${surahNum}, ${ayahNum}, '${surahName}')" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="التفسير الميسر">
-          <i class="fa-solid fa-circle-info text-accent text-sm"></i>
-          <span class="text-[10px] sm:text-[11px]">تفسير</span>
-        </button>
-
-        <!-- 3. تدوين خاطرة وتدبّر -->
-        <button onclick="openAyahNoteModal(${surahNum}, ${ayahNum}, '${surahName}', `${cleanSnippet.replace(/'/g, '')}`, ${pageNum || 1})" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="تدبّر وخاطرة">
-          <i class="fa-solid fa-feather-pointed text-amber-500 text-sm"></i>
-          <span class="text-[10px] sm:text-[11px]">${note ? 'تعديل تدبّر' : 'تدبّر وخاطرة'}</span>
-        </button>
-
-        <!-- 4. تلاوة واستماع للآية -->
-        <button onclick="playAyahAudioDirect(${surahNum}, ${ayahNum})" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="استماع للآية">
-          <i class="fa-solid fa-headphones text-accent text-sm"></i>
-          <span class="text-[10px] sm:text-[11px]">استماع</span>
-        </button>
-
-        <!-- 5. نسخ نص الآية -->
-        <button onclick="copyText('${(ayahText || '').replace(/'/g, '')}')" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="نسخ الآية">
-          <i class="fa-solid fa-copy text-sm"></i>
-          <span class="text-[10px] sm:text-[11px]">نسخ</span>
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(strip);
-}
 
 function closeAyahActionStrip() {
   const existing = document.getElementById('floatingAyahActionStrip');
@@ -2984,20 +2895,166 @@ function closeAyahActionStrip() {
     }
     activeSelectedAyahCardId = null;
   }
+  activeSelectedAyah = null;
 }
 
-function toggleAyahBookmarkFromStrip(surahNum, ayahNum, surahName, ayahSnippet, pageNum) {
-  saveBookmark(surahNum, ayahNum, surahName, ayahSnippet);
-  
-  // تحديث شكل الزر في الشريط
+function onAyahCardClicked(idx) {
+  const a = currentDrawerAyahs[idx];
+  if (!a) return;
+
+  // إزالة أي تظليل سابق
+  if (activeSelectedAyahCardId) {
+    const oldCard = document.getElementById(activeSelectedAyahCardId);
+    if (oldCard) oldCard.classList.remove('ring-2', 'ring-accent', 'border-accent', 'bg-amber-500/10');
+  }
+
+  activeSelectedAyah = a;
+  activeSelectedAyahCardId = 'drawerAyahCard_' + a.surah.number + '_' + a.numberInSurah;
+
+  const card = document.getElementById(activeSelectedAyahCardId);
+  if (card) {
+    card.classList.add('ring-2', 'ring-accent', 'border-accent', 'bg-amber-500/10');
+  }
+
+  renderFloatingAyahActionStrip();
+}
+
+function renderFloatingAyahActionStrip() {
+  const existing = document.getElementById('floatingAyahActionStrip');
+  if (existing) existing.remove();
+
+  const a = activeSelectedAyah;
+  if (!a) return;
+
+  const surahNum = a.surah.number;
+  const ayahNum = a.numberInSurah;
+  const surahName = a.surah.name || '';
+  const ayahText = a.text || '';
+  const pageNum = currentReadingPage || 1;
+
+  const bookmark = ls('quran_bookmark', null);
+  const isBookmarked = bookmark && bookmark.surahNumber === surahNum && bookmark.ayahNumber === ayahNum;
+  const note = getAyahNote(surahNum, ayahNum);
+  const cleanSnippet = ayahText.replace(/[\n\r]+/g, ' ').substring(0, 50);
+
+  const strip = document.createElement('div');
+  strip.id = 'floatingAyahActionStrip';
+  strip.className = 'fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4 shadow-2xl border-t animate-slideUp backdrop-blur-lg';
+  strip.style.backgroundColor = 'color-mix(in srgb, var(--bg-card) 96%, transparent)';
+  strip.style.borderColor = 'var(--border-color)';
+  strip.style.paddingBottom = 'max(0.75rem, env(safe-area-inset-bottom, 0px))';
+
+  let noteHTML = '';
+  if (note) {
+    noteHTML = `
+      <div class="p-2.5 rounded-xl border border-amber-400/50 bg-amber-500/10 text-xs flex items-center justify-between gap-2">
+        <div class="truncate flex items-center gap-1.5 font-medium text-amber-800 dark:text-amber-200">
+          <i class="fa-solid fa-note-sticky text-amber-500 shrink-0"></i>
+          <span class="truncate"><strong>خاطرتك:</strong> ${note.note}</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="openActiveAyahNoteModal()" class="text-amber-600 dark:text-amber-400 underline text-[11px] font-bold">تعديل</button>
+          <button onclick="deleteActiveAyahNote()" class="text-rose-500 text-[11px]"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      </div>
+    `;
+  }
+
+  strip.innerHTML = `
+    <div class="max-w-2xl mx-auto space-y-2.5">
+      <!-- الشريط العلوي المصغر للآية مع زر الإغلاق -->
+      <div class="flex items-center justify-between text-xs font-bold pb-2 border-b" style="border-color:var(--border-color); color:var(--text-muted)">
+        <div class="flex items-center gap-2 truncate">
+          <span class="font-black text-sm" style="color:var(--accent)">سورة ${surahName}</span>
+          <span>• آية ${toAr(ayahNum)}</span>
+          <span class="text-[11px] px-2 py-0.5 rounded bg-accent-soft text-accent">صـ ${toAr(pageNum)}</span>
+          <span class="hidden sm:inline font-normal truncate max-w-[200px]" style="color:var(--text-muted)">«${cleanSnippet}...»</span>
+        </div>
+        <button onclick="closeAyahActionStrip()" class="pill !p-1.5 text-xs text-rose-500 hover:bg-rose-500/10" title="إغلاق الشريط">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      ${noteHTML}
+
+      <!-- أزرار الإجراءات المتكاملة للآية -->
+      <div class="grid grid-cols-5 gap-1.5 sm:gap-2 text-center select-none">
+        <!-- 1. حفظ علامة الوقوف -->
+        <button id="stripBookmarkBtn" onclick="toggleActiveAyahBookmark()" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95 ${isBookmarked ? 'bg-amber-500 text-white border-transparent' : 'text-amber-600 dark:text-amber-400'}" title="حفظ علامة وقوف">
+          <i class="${isBookmarked ? 'fa-solid' : 'fa-regular'} fa-bookmark text-sm"></i>
+          <span class="text-[10px] sm:text-[11px]">${isBookmarked ? 'علامتك ✓' : 'علامة توقف'}</span>
+        </button>
+
+        <!-- 2. التفسير الميسر -->
+        <button onclick="openActiveAyahTafsir()" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="التفسير الميسر">
+          <i class="fa-solid fa-circle-info text-accent text-sm"></i>
+          <span class="text-[10px] sm:text-[11px]">تفسير</span>
+        </button>
+
+        <!-- 3. تدوين خاطرة وتدبّر -->
+        <button onclick="openActiveAyahNoteModal()" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="تدبّر وخاطرة">
+          <i class="fa-solid fa-feather-pointed text-amber-500 text-sm"></i>
+          <span class="text-[10px] sm:text-[11px]">${note ? 'تعديل تدبّر' : 'تدبّر وخاطرة'}</span>
+        </button>
+
+        <!-- 4. تلاوة واستماع للآية -->
+        <button onclick="playActiveAyahAudio()" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="استماع للآية">
+          <i class="fa-solid fa-headphones text-accent text-sm"></i>
+          <span class="text-[10px] sm:text-[11px]">استماع</span>
+        </button>
+
+        <!-- 5. نسخ نص الآية -->
+        <button onclick="copyActiveAyahText()" class="pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition hover:scale-105 active:scale-95" title="نسخ الآية">
+          <i class="fa-solid fa-copy text-sm"></i>
+          <span class="text-[10px] sm:text-[11px]">نسخ</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(strip);
+}
+
+function toggleActiveAyahBookmark() {
+  if (!activeSelectedAyah) return;
+  const a = activeSelectedAyah;
+  saveBookmark(a.surah.number, a.numberInSurah, a.surah.name, a.text);
+
   const btn = $('#stripBookmarkBtn');
   if (btn) {
     btn.className = 'pill !py-2 !px-1 text-xs font-bold flex flex-col items-center justify-center gap-1 transition bg-amber-500 text-white border-transparent';
     btn.innerHTML = '<i class="fa-solid fa-bookmark text-sm"></i><span class="text-[10px] sm:text-[11px]">علامتك ✓</span>';
   }
 
-  // تحديث شارات الآيات في الدرج
-  updateDrawerAyahsBookmarkUI(surahNum, ayahNum);
+  updateDrawerAyahsBookmarkUI(a.surah.number, a.numberInSurah);
+}
+
+function openActiveAyahTafsir() {
+  if (!activeSelectedAyah) return;
+  openAyahDetailModal(activeSelectedAyah.surah.number, activeSelectedAyah.numberInSurah, activeSelectedAyah.surah.name);
+}
+
+function openActiveAyahNoteModal() {
+  if (!activeSelectedAyah) return;
+  const a = activeSelectedAyah;
+  openAyahNoteModal(a.surah.number, a.numberInSurah, a.surah.name, a.text.substring(0, 70), currentReadingPage || 1);
+}
+
+function playActiveAyahAudio() {
+  if (!activeSelectedAyah) return;
+  playAyahAudioDirect(activeSelectedAyah.surah.number, activeSelectedAyah.numberInSurah);
+}
+
+function copyActiveAyahText() {
+  if (!activeSelectedAyah) return;
+  copyText(activeSelectedAyah.text);
+}
+
+function deleteActiveAyahNote() {
+  if (!activeSelectedAyah) return;
+  const a = activeSelectedAyah;
+  deleteAyahNote(a.surah.number, a.numberInSurah, currentReadingPage || 1);
+  renderFloatingAyahActionStrip();
 }
 
 // درج آيات الصفحة النقي والتفاعلي (يظهر شريط الخيارات عند النقر على أي آية)
@@ -3018,13 +3075,15 @@ async function toggleFullscreenPageDrawer(pageNum, targetAyah = null, forceReloa
   try {
     const res = await fetchJSON(`https://api.alquran.cloud/v1/page/${pageNum}/quran-uthmani`);
     const ayahs = res.data?.ayahs || [];
+    currentDrawerAyahs = ayahs;
+
     if (ayahs.length === 0) {
       body.innerHTML = '<div class="text-center p-3 text-xs text-muted">لا توجد آيات في هذه الصفحة.</div>';
       return;
     }
 
     const bookmark = ls('quran_bookmark', null);
-    
+
     // شريط إرشادي خفيف في أعلى الدرج
     body.innerHTML = `
       <div class="p-2 sm:p-2.5 rounded-xl border flex items-center justify-between text-xs font-bold mb-1" style="background:var(--accent-soft); border-color:var(--border-color); color:var(--text-muted)">
@@ -3035,14 +3094,14 @@ async function toggleFullscreenPageDrawer(pageNum, targetAyah = null, forceReloa
         <span class="text-[11px] font-mono">${toAr(ayahs.length)} آية</span>
       </div>
       <div class="space-y-3 pb-24" id="drawerAyahsList">
-        ${ayahs.map(a => {
+        ${ayahs.map((a, idx) => {
           const isBookmarked = bookmark && bookmark.surahNumber === a.surah.number && bookmark.ayahNumber === a.numberInSurah;
           const note = getAyahNote(a.surah.number, a.numberInSurah);
           const isTarget = targetAyah === a.numberInSurah;
 
           return `
             <div id="drawerAyahCard_${a.surah.number}_${a.numberInSurah}" 
-                 onclick="openAyahActionStrip(${a.surah.number}, ${a.numberInSurah}, '${a.surah.name}', `${a.text.replace(/'/g, '')}`, ${pageNum})"
+                 onclick="onAyahCardClicked(${idx})"
                  class="p-4 rounded-2xl border transition cursor-pointer select-none hover:border-accent active:scale-[0.99] relative space-y-2 ${isBookmarked ? 'border-amber-400 bg-amber-500/5' : ''} ${isTarget ? 'ring-2 ring-accent animate-pulse' : ''}" 
                  style="border-color:var(--border-color); background:var(--bg-card)">
               
@@ -3078,13 +3137,11 @@ async function toggleFullscreenPageDrawer(pageNum, targetAyah = null, forceReloa
 
     if (targetAyah) {
       setTimeout(() => {
-        const targetEl = document.getElementById(`drawerAyahCard_${ayahs[0].surah.number}_${targetAyah}`);
-        if (targetEl) {
-          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          const targetAyahObj = ayahs.find(x => x.numberInSurah === targetAyah);
-          if (targetAyahObj) {
-            openAyahActionStrip(targetAyahObj.surah.number, targetAyahObj.numberInSurah, targetAyahObj.surah.name, targetAyahObj.text, pageNum);
-          }
+        const targetIdx = ayahs.findIndex(x => x.numberInSurah === targetAyah);
+        if (targetIdx !== -1) {
+          const targetEl = document.getElementById('drawerAyahCard_' + ayahs[targetIdx].surah.number + '_' + targetAyah);
+          if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          onAyahCardClicked(targetIdx);
         }
       }, 300);
     }
@@ -3097,11 +3154,12 @@ function updateDrawerAyahsBookmarkUI(surahNum, ayahNum) {
   $$('#drawerAyahsList div[id^="drawerAyahCard_"]').forEach(el => {
     el.classList.remove('border-amber-400', 'bg-amber-500/5');
   });
-  const currentCard = document.getElementById(`drawerAyahCard_${surahNum}_${ayahNum}`);
+  const currentCard = document.getElementById('drawerAyahCard_' + surahNum + '_' + ayahNum);
   if (currentCard) {
     currentCard.classList.add('border-amber-400', 'bg-amber-500/5');
   }
 }
+
 
 // نافذة البحث الشامل في آيات المصحف الشريف من القارئ
 function openMushafAyahSearchModal(preferredSurahNum = null, preferredSurahName = '') {
