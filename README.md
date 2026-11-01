@@ -94,8 +94,6 @@
   * Al-Quran Cloud API (المصحف الشريف).
   * MP3Quran CDN (التلاوات الصوتية عالية السرعة).
   * RadioJar (البث الحي لإذاعة القرآن الكريم من القاهرة).
-* **Analytics / Logging:** Google Apps Script Webhook لتسجيل إحصائيات التحميل في Google Sheets في الوقت الفعلي.
-
 ---
 
 ## 👨‍💻 المطور والتواصل
