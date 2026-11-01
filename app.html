@@ -18,6 +18,11 @@
 <link rel="icon" type="image/svg+xml" href="./icon.svg">
 
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class'
+  };
+</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -90,6 +95,7 @@ body {
 .font-amiri { font-family: 'Amiri', serif; }
 .card {
   background-color: var(--bg-card);
+  color: var(--text-primary);
   border: 1px solid var(--border-color);
   border-radius: 1.25rem;
   box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
@@ -671,6 +677,11 @@ const THEMES = [
 
 function applyTheme(themeId) {
   document.documentElement.setAttribute('data-theme', themeId);
+  if (themeId === 'night') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
   sv('theme', themeId);
   const select = $('#themeSelect');
   if (select && select.value !== themeId) {
@@ -1354,7 +1365,9 @@ let adhkarSoundEnabled = ls('adhkar_sound', true);
 // فهرس الأذكار الشامل والمبوّب (حصن المسلم Hub)
 // ==========================================
 function openAdhkarHub(pushState = true) {
+  currentActiveScreen = 'adhkarHub';
   setSubViewTitle('<i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> حصن المسلم - فهرس الأذكار والأدعية');
+  const bTxt = $('#subViewBackBtnText'); if (bTxt) bTxt.textContent = 'العودة للرئيسية';
 
   if (pushState && !isHandlingPopState) {
     history.pushState({ screen: 'adhkarHub' }, '');
@@ -1485,8 +1498,12 @@ function filterAdhkarHubCards(query) {
   }
 }
 
-function openAdhkarCategory(catId, isNewVisit = true) {
+function openAdhkarCategory(catId, isNewVisit = true, pushState = true) {
+  currentActiveScreen = 'adhkarCategory';
   currentOpenCatId = catId;
+  if (pushState && !isHandlingPopState) {
+    history.pushState({ screen: 'adhkarCategory', catId }, '');
+  }
   const cat = ADHKAR_CATEGORIES.find(c => c.id === catId);
   currentCategoryAdhkar = BUILTIN_ADHKAR[catId] || [];
 
@@ -1500,6 +1517,7 @@ function openAdhkarCategory(catId, isNewVisit = true) {
 
   const title = cat ? cat.name : 'الأذكار';
   setSubViewTitle(`<i class="fa-solid ${cat.icon}" style="color:${cat.color}"></i> ${title}`);
+  const backText = $('#subViewBackBtnText'); if (backText) backText.textContent = 'فهرس الأذكار';
 
   const finishedCount = currentCategoryCounters.filter(c => c === 0).length;
   const percent = currentCategoryAdhkar.length ? (finishedCount / currentCategoryAdhkar.length) * 100 : 0;
@@ -1509,7 +1527,7 @@ function openAdhkarCategory(catId, isNewVisit = true) {
     <div class="card p-4 mb-4 space-y-3 sticky top-16 z-30 backdrop-blur-md bg-opacity-95 shadow-sm">
       <div class="flex flex-wrap items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
-          <button onclick="openAdhkarHub()" class="pill text-xs py-1.5 px-3 font-bold border-accent text-accent hover:bg-accent hover:text-white transition flex items-center gap-1.5" title="الرجوع لقائمة أقسام الأذكار">
+          <button onclick="handleAppBackButton()" class="pill text-xs py-1.5 px-3 font-bold border-accent text-accent hover:bg-accent hover:text-white transition flex items-center gap-1.5" title="الرجوع لقائمة أقسام الأذكار">
             <i class="fa-solid fa-arrow-right"></i>
             <span>فهرس الأذكار</span>
           </button>
@@ -2129,7 +2147,9 @@ function renderHomeQuranBookmarkCard() {
 
 // الواجهة الرئيسية للقرآن الكريم (الفهارس الأربعة)
 async function openQuranModule(pushState = true) {
+  currentActiveScreen = 'quranHub';
   setSubViewTitle('<i class="fa-solid fa-book-quran" style="color:var(--accent)"></i> القرآن الكريم');
+  const bTxt = $('#subViewBackBtnText'); if (bTxt) bTxt.textContent = 'العودة للرئيسية';
   currentReadingSurah = null;
   currentReadingPage = null;
 
@@ -2438,7 +2458,8 @@ function openAyahNoteModal(surahNum, ayahNum, surahName, ayahSnippet, pageNum) {
   const currentText = existing ? existing.note : '';
 
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn';
+  modal.style.zIndex = '300';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
   modal.innerHTML = `
@@ -2529,7 +2550,7 @@ function openAllSavedAyahNotesModal() {
   const allNotes = getAllSavedAyahNotes();
 
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn'; modal.style.zIndex = '300';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
   modal.innerHTML = `
@@ -2730,7 +2751,7 @@ async function readQuranPage(pageNum, pushState = true) {
     </div>
 
     <!-- درج منبثق لتفسير، تلاوة، وخواطر آيات الصفحة (Bottom Sheet) -->
-    <div id="mushafAyahsDrawer" class="hidden fixed inset-x-0 bottom-0 z-40 max-h-[80vh] flex flex-col rounded-t-3xl shadow-2xl border-t animate-fadeIn" style="background-color: var(--bg-card); border-color: var(--border-color);">
+    <div id="mushafAyahsDrawer" class="hidden fixed inset-x-0 bottom-0 max-h-[80vh] flex flex-col rounded-t-3xl shadow-2xl border-t animate-fadeIn" style="z-index: 150; background-color: var(--bg-card); border-color: var(--border-color);">
       <div class="p-3.5 border-b flex items-center justify-between" style="border-color:var(--border-color)">
         <div class="font-black text-xs sm:text-sm flex items-center gap-2" style="color:var(--accent)">
           <i class="fa-solid fa-book-open-reader"></i>
@@ -2748,7 +2769,7 @@ async function readQuranPage(pageNum, pushState = true) {
     </div>
 
     <!-- سايدبار السور الـ 114 الجانبي المنزلق (Surahs Slide-over Sidebar) -->
-    <div id="mushafSurahsDrawerContainer" class="hidden fixed inset-0 z-50 flex justify-end">
+    <div id="mushafSurahsDrawerContainer" style="z-index: 250;" class="hidden fixed inset-0 flex justify-end">
       <div onclick="toggleMushafSurahsSidebar(false)" class="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn"></div>
       <div class="relative w-full max-w-sm h-full flex flex-col shadow-2xl z-10 animate-slideInRight" style="background-color: var(--bg-card); border-right: 1px solid var(--border-color);">
         <div class="p-4 border-b flex items-center justify-between" style="border-color:var(--border-color)">
@@ -2771,7 +2792,7 @@ async function readQuranPage(pageNum, pushState = true) {
     </div>
 
     <!-- سايدبار الأجزاء الـ 30 الجانبي المنزلق (Juz Slide-over Sidebar) -->
-    <div id="mushafJuzDrawerContainer" class="hidden fixed inset-0 z-50 flex justify-end">
+    <div id="mushafJuzDrawerContainer" style="z-index: 250;" class="hidden fixed inset-0 flex justify-end">
       <div onclick="toggleMushafJuzSidebar(false)" class="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn"></div>
       <div class="relative w-full max-w-sm h-full flex flex-col shadow-2xl z-10 animate-slideInRight" style="background-color: var(--bg-card); border-right: 1px solid var(--border-color);">
         <div class="p-4 border-b flex items-center justify-between" style="border-color:var(--border-color)">
@@ -2939,8 +2960,9 @@ function renderFloatingAyahActionStrip() {
 
   const strip = document.createElement('div');
   strip.id = 'floatingAyahActionStrip';
-  strip.className = 'fixed inset-x-0 bottom-0 z-50 p-3 sm:p-4 shadow-2xl border-t animate-slideUp backdrop-blur-lg';
-  strip.style.backgroundColor = 'color-mix(in srgb, var(--bg-card) 96%, transparent)';
+  strip.className = 'fixed inset-x-0 bottom-0 p-3 sm:p-4 shadow-2xl border-t animate-slideUp backdrop-blur-lg';
+  strip.style.zIndex = '250';
+  strip.style.backgroundColor = 'color-mix(in srgb, var(--bg-card) 98%, transparent)';
   strip.style.borderColor = 'var(--border-color)';
   strip.style.paddingBottom = 'max(0.75rem, env(safe-area-inset-bottom, 0px))';
 
@@ -3166,7 +3188,7 @@ function openMushafAyahSearchModal(preferredSurahNum = null, preferredSurahName 
   currentSearchPreferredSurah = preferredSurahNum;
 
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn'; modal.style.zIndex = '300';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
   modal.innerHTML = `
@@ -3436,7 +3458,8 @@ async function openAyahDetailModal(surahNum, ayahInSurah, surahName) {
   }
 
   const modal = document.createElement('div');
-  modal.className = 'fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn';
+  modal.className = 'fixed inset-0 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fadeIn';
+  modal.style.zIndex = '300';
   modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
 
   modal.innerHTML = `
@@ -4116,7 +4139,9 @@ const BUILTIN_HADITHS = [
 let allHadithsCollection = [...BUILTIN_HADITHS];
 
 async function openHadithModule() {
+  currentActiveScreen = 'hadith';
   setSubViewTitle('<i class="fa-solid fa-scroll" style="color:var(--accent)"></i> موسوعة الأحاديث النبوية');
+  const bTxt = $('#subViewBackBtnText'); if (bTxt) bTxt.textContent = 'العودة للرئيسية';
 
   const html = `
     <!-- محرك البحث ومصدر الأحاديث -->
@@ -4167,8 +4192,8 @@ function renderHadithsList(hadiths) {
   }
 
   container.innerHTML = hadiths.slice(0, 50).map((h, i) => `
-    <div class="card p-5 transition hover:border-accent space-y-3">
-      <p class="font-amiri text-lg sm:text-xl font-bold leading-relaxed text-justify text-slate-800 dark:text-slate-100">
+    <div class="card p-5 transition hover:border-accent space-y-3" style="background-color: var(--bg-card); border-color: var(--border-color); color: var(--text-primary);">
+      <p class="font-amiri text-lg sm:text-xl font-bold leading-relaxed text-justify" style="color: var(--text-primary) !important;">
         «${h.text}»
       </p>
       <div class="flex items-center justify-between pt-3 border-t text-xs font-semibold" style="border-color:var(--border-color); color:var(--text-muted)">
@@ -5026,14 +5051,67 @@ function setSubViewTitle(title) {
 
 // إدارة الملاحة والتنقل وزر الرجوع بالهاتف (Hardware Back Button Management)
 let isHandlingPopState = false;
+
+let currentActiveScreen = 'home'; // 'home' | 'adhkarHub' | 'adhkarCategory' | 'quranHub' | 'hadith' | 'tasks' | 'tasbeeh'
+
 let lastBackPressTime = 0;
 
 function handleAppBackButton() {
-  if (currentReadingSurah !== null || currentReadingPage !== null) {
-    openQuranModule(false);
-  } else {
-    goHome();
+  // 1. إغلاق شريط خيارات الآية إن وُجد
+  const ayahStrip = document.getElementById('floatingAyahActionStrip');
+  if (ayahStrip) {
+    closeAyahActionStrip();
+    return;
   }
+
+  // 2. إغلاق أي نافذة منبثقة (مودال تفاصيل، تفسير، تدبر، إلخ)
+  const topModal = document.querySelector('.fixed[style*="z-index: 300"], .fixed[style*="z-index: 250"], .fixed.z-50:not(#subView):not(#homeView):not(#mushafFullscreenViewer)');
+  if (topModal) {
+    topModal.remove();
+    return;
+  }
+
+  // 3. إغلاق درج الآيات داخل المصحف
+  const drawer = $('#mushafAyahsDrawer');
+  if (drawer && !drawer.classList.contains('hidden')) {
+    drawer.classList.add('hidden');
+    closeAyahActionStrip();
+    return;
+  }
+
+  // 4. إغلاق سايدبار السور أو الأجزاء
+  const surahsSidebar = $('#mushafSurahsDrawerContainer');
+  if (surahsSidebar && !surahsSidebar.classList.contains('hidden')) {
+    toggleMushafSurahsSidebar(false);
+    return;
+  }
+  const juzSidebar = $('#mushafJuzDrawerContainer');
+  if (juzSidebar && !juzSidebar.classList.contains('hidden')) {
+    toggleMushafJuzSidebar(false);
+    return;
+  }
+
+  // 5. إذا كان عارض المصحف بملء الشاشة مفتوحاً، نعود لفهرس المصحف
+  const fullscreenViewer = $('#mushafFullscreenViewer');
+  if (fullscreenViewer) {
+    closeFullscreenMushaf();
+    return;
+  }
+
+  // 6. إذا كان المستخدم داخل فئة أذكار معينة (أذكار الصباح، المساء، إلخ)، يعود خطوة واحدة لفهرس الأذكار
+  if (currentActiveScreen === 'adhkarCategory') {
+    openAdhkarHub(false);
+    return;
+  }
+
+  // 7. إذا كان يقرأ سورة نصية
+  if (currentReadingSurah !== null) {
+    openQuranModule(false);
+    return;
+  }
+
+  // 8. الرجوع للرئيسية
+  goHome();
 }
 
 function renderSubView(htmlContent, pushState = true) {
@@ -5049,6 +5127,7 @@ function renderSubView(htmlContent, pushState = true) {
 }
 
 function goHome(fromPopState = false) {
+  currentActiveScreen = 'home';
   $('#mushafFullscreenViewer')?.remove();
   $('#subView').hidden = true;
   $('#homeView').hidden = false;
@@ -5071,7 +5150,46 @@ function goHome(fromPopState = false) {
 window.addEventListener('popstate', (e) => {
   isHandlingPopState = true;
 
-  // 1. إذا كان عارض المصحف بملء الشاشة مفتوحاً، أغلقه والعودة للفهرس
+  // 1. إغلاق شريط خيارات الآية المنبثق إن وُجد
+  const ayahStrip = document.getElementById('floatingAyahActionStrip');
+  if (ayahStrip) {
+    closeAyahActionStrip();
+    isHandlingPopState = false;
+    return;
+  }
+
+  // 2. إغلاق أي نافذة منبثقة (مودال التفسير، التدبر، إلخ)
+  const topModal = document.querySelector('.fixed[style*="z-index: 300"], .fixed[style*="z-index: 250"], .fixed.z-50:not(#subView):not(#homeView):not(#mushafFullscreenViewer)');
+  if (topModal) {
+    topModal.remove();
+    isHandlingPopState = false;
+    return;
+  }
+
+  // 3. إغلاق درج آيات الصفحة في المصحف
+  const drawer = $('#mushafAyahsDrawer');
+  if (drawer && !drawer.classList.contains('hidden')) {
+    drawer.classList.add('hidden');
+    closeAyahActionStrip();
+    isHandlingPopState = false;
+    return;
+  }
+
+  // 4. إغلاق سايدبار السور أو الأجزاء
+  const surahsSidebar = $('#mushafSurahsDrawerContainer');
+  if (surahsSidebar && !surahsSidebar.classList.contains('hidden')) {
+    toggleMushafSurahsSidebar(false);
+    isHandlingPopState = false;
+    return;
+  }
+  const juzSidebar = $('#mushafJuzDrawerContainer');
+  if (juzSidebar && !juzSidebar.classList.contains('hidden')) {
+    toggleMushafJuzSidebar(false);
+    isHandlingPopState = false;
+    return;
+  }
+
+  // 5. إذا كان عارض المصحف مفتوحاً، يعود لفهرس المصحف
   const fullscreenViewer = $('#mushafFullscreenViewer');
   if (fullscreenViewer) {
     fullscreenViewer.remove();
@@ -5081,24 +5199,22 @@ window.addEventListener('popstate', (e) => {
     return;
   }
 
-  // 2. إذا كان هناك أي نافذة منبثقة مفتوحة (مودال)، يتم إغلاقها فقط دون مغادرة الصفحة
-  const activeModals = document.querySelectorAll('.fixed.z-50:not(#toastContainer):not(#bottomAudioPlayer)');
-  if (activeModals && activeModals.length > 0) {
-    activeModals[activeModals.length - 1].remove();
+  // 6. إذا كان المستخدم داخل فئة أذكار معينة، يرجع خطوة واحدة لفهرس الأذكار
+  if (currentActiveScreen === 'adhkarCategory') {
+    openAdhkarHub(false);
     isHandlingPopState = false;
     return;
   }
 
-  // 2. إذا كان المستخدم يقرأ سورة أو صفحة في المصحف، يعود لفهرس المصحف
-  if (currentReadingSurah !== null || currentReadingPage !== null) {
+  // 7. إذا كان يقرأ سورة، يعود لفهرس المصحف
+  if (currentReadingSurah !== null) {
     currentReadingSurah = null;
-    currentReadingPage = null;
     openQuranModule(false);
     isHandlingPopState = false;
     return;
   }
 
-  // 3. إذا كان المستخدم في أي شاشة فرعية (مهامي، الأذكار، المصحف، إلخ)، يعود للرئيسية
+  // 8. إذا كان في أي شاشة فرعية أخرى، يعود للرئيسية
   const subView = $('#subView');
   if (subView && !subView.hidden) {
     goHome(true);
@@ -5106,10 +5222,10 @@ window.addEventListener('popstate', (e) => {
     return;
   }
 
-  // 4. إذا كان في الشاشة الرئيسية: حماية من الخروج العرضي (الضغط المزدوج للخروج)
+  // 9. إذا كان في الشاشة الرئيسية: حماية من الخروج العرضي (الضغط المزدوج للخروج)
   const now = Date.now();
   if (now - lastBackPressTime < 2500) {
-    // يسمح للمتصفح بالخروج إذا ضغط مرتين خلال 2.5 ثانية
+    // خروج
   } else {
     lastBackPressTime = now;
     showToast('اضغط زر الرجوع مرة أخرى للخروج من التطبيق 🌿', 'info');
@@ -5744,7 +5860,7 @@ function triggerPWAInstall() {
 // تسجيل الـ Service Worker مع دعم التحديث التلقائي الفوري (Network-First)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=14').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=16').then((reg) => {
       // إجبار فحص التحديث فورياً عند كل فتح للتطبيق
       reg.update();
 
