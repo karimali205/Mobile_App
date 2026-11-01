@@ -1,4 +1,7 @@
-const CACHE_NAME = 'rafiq-almuslim-v16';
+const CACHE_NAME = 'rafiq-almuslim-v17';
+const MUSHAF_CACHE_NAME = 'rafiq-mushaf-pages';
+const API_CACHE_NAME = 'rafiq-api-cache';
+
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -9,7 +12,7 @@ const STATIC_ASSETS = [
   './icon.svg'
 ];
 
-// التثبيت وتجاوز الانتظار فورياً
+// التثبيت وتجاوز الانتظار فورياً وحفظ الأصول الأساسية
 self.addEventListener('install', (e) => {
   self.skipWaiting();
   e.waitUntil(
@@ -19,13 +22,13 @@ self.addEventListener('install', (e) => {
   );
 });
 
-// تفعيل وتنظيف كافة النسخ القديمة فورياً وإشعار كافة النوافذ المفتوحة
+// تفعيل وتنظيف النسخ القديمة للكود الرئيسي فقط، مع الاحتفاظ بكاش المصحف الدائم
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((k) => {
-          if (k !== CACHE_NAME) {
+          if (k !== CACHE_NAME && k !== MUSHAF_CACHE_NAME && k !== API_CACHE_NAME) {
             console.log('Clearing outdated cache:', k);
             return caches.delete(k);
           }
@@ -75,8 +78,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// استراتيجية التعامل مع الطلبات:
-// Network-First لصفحات HTML (لكي يصل أي تحديث يتم رفعه على جيت هب فورياً) مع Fallback للكاش عند انقطاع النت
+// استراتيجية التعامل مع الطلبات (Network-First لـ HTML، Cache-First للمصحف والملفات الثابتة)
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
 
@@ -85,6 +87,43 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
+  // 1. صور صفحات مصحف المدينة: Cache-First لضمان عملها أوفلاين للأبد
+  if (url.hostname.includes('quran.com') || url.hostname.includes('quran-images-madinah')) {
+    e.respondWith(
+      caches.open(MUSHAF_CACHE_NAME).then((mushafCache) => {
+        return mushafCache.match(e.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(e.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              mushafCache.put(e.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => null);
+        });
+      })
+    );
+    return;
+  }
+
+  // 2. طلبات نصوص وتفاسير الآيات: حفظها في كاش API لتعمل أوفلاين
+  if (url.hostname.includes('api.alquran.cloud')) {
+    e.respondWith(
+      caches.open(API_CACHE_NAME).then((apiCache) => {
+        return apiCache.match(e.request).then((cached) => {
+          if (cached) return cached;
+          return fetch(e.request).then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              apiCache.put(e.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => null);
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. صفحات HTML: Network-First لضمان وصول التحديثات فوراً مع Fallback للكاش
   const isHTMLRequest = e.request.mode === 'navigate' || 
                         e.request.destination === 'document' || 
                         url.pathname.endsWith('.html') || 
@@ -92,7 +131,6 @@ self.addEventListener('fetch', (e) => {
                         url.pathname.endsWith('/mobile_app');
 
   if (isHTMLRequest) {
-    // Network-First لصفحات HTML لضمان نزول التحديثات فورياً
     e.respondWith(
       fetch(e.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
@@ -109,7 +147,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-First للأصول الثابتة (أيقونات وخطوط وتصميم) مع تحديثها في الخلفية
+  // 4. الأصول الثابتة: Cache-First مع التحديث في الخلفية
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const networkUpdate = fetch(e.request).then((networkResponse) => {

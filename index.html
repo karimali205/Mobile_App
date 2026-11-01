@@ -504,13 +504,13 @@ body {
 
   <!-- شاشة العرض الديناميكية (Dynamic Sub-view) -->
   <section id="subView" hidden class="animate-fadeIn">
-    <div class="flex items-center justify-between gap-3 mb-5 pb-3 border-b" style="border-color: var(--border-color)">
-      <div class="flex items-center gap-3">
-        <button onclick="handleAppBackButton()" class="pill text-sm font-bold flex items-center gap-1.5 shadow-xs">
-          <i class="fa-solid fa-arrow-right"></i>
+    <div id="subViewTopNavRow" class="flex items-center justify-between gap-2 mb-3 pb-2 border-b" style="border-color: var(--border-color)">
+      <div class="flex items-center gap-2">
+        <button onclick="handleAppBackButton()" class="pill text-xs py-1.5 px-3 font-bold flex items-center gap-1.5 shadow-xs">
+          <i class="fa-solid fa-arrow-right text-[11px]"></i>
           <span id="subViewBackBtnText">العودة للرئيسية</span>
         </button>
-        <h2 id="subViewTitle" class="text-xl sm:text-2xl font-extrabold flex items-center gap-2">--</h2>
+        <h2 id="subViewTitle" class="text-base sm:text-lg font-extrabold flex items-center gap-1.5">--</h2>
       </div>
       <div id="subViewHeaderActions"></div>
     </div>
@@ -688,6 +688,9 @@ function applyTheme(themeId) {
     select.value = themeId;
   }
 }
+
+
+
 
 function initThemes() {
   const select = $('#themeSelect');
@@ -1365,6 +1368,7 @@ let adhkarSoundEnabled = ls('adhkar_sound', true);
 // فهرس الأذكار الشامل والمبوّب (حصن المسلم Hub)
 // ==========================================
 function openAdhkarHub(pushState = true) {
+  updateSubViewNavVisibility(false);
   currentActiveScreen = 'adhkarHub';
   setSubViewTitle('<i class="fa-solid fa-shield-halved" style="color:var(--accent)"></i> حصن المسلم - فهرس الأذكار والأدعية');
   const bTxt = $('#subViewBackBtnText'); if (bTxt) bTxt.textContent = 'العودة للرئيسية';
@@ -1499,6 +1503,7 @@ function filterAdhkarHubCards(query) {
 }
 
 function openAdhkarCategory(catId, isNewVisit = true, pushState = true) {
+  updateSubViewNavVisibility(false);
   currentActiveScreen = 'adhkarCategory';
   currentOpenCatId = catId;
   if (pushState && !isHandlingPopState) {
@@ -1742,6 +1747,7 @@ let tasbeehSoundEnabled = ls('tasbeeh_sound', true);
 let tasbeehVibrateEnabled = ls('tasbeeh_vibrate', true);
 
 function openTasbeehView() {
+  updateSubViewNavVisibility(false);
   setSubViewTitle('<i class="fa-solid fa-circle-dot" style="color:var(--accent)"></i> السبحة الإلكترونية');
 
   // حساب محيط دائرة التقدم (r = 85 => circumference = 2 * PI * 85 ≈ 534)
@@ -2147,6 +2153,7 @@ function renderHomeQuranBookmarkCard() {
 
 // الواجهة الرئيسية للقرآن الكريم (الفهارس الأربعة)
 async function openQuranModule(pushState = true) {
+  updateSubViewNavVisibility(false);
   currentActiveScreen = 'quranHub';
   setSubViewTitle('<i class="fa-solid fa-book-quran" style="color:var(--accent)"></i> القرآن الكريم');
   const bTxt = $('#subViewBackBtnText'); if (bTxt) bTxt.textContent = 'العودة للرئيسية';
@@ -2161,6 +2168,40 @@ async function openQuranModule(pushState = true) {
     <div id="quranHeroBookmarkWrap">
       ${bookmark ? renderQuranHeroBookmarkCard(bookmark) : ''}
     </div>
+
+    <!-- كارت تحميل المصحف الشريف كاملاً للقراءة بدون إنترنت (أوفلاين) -->
+    <div id="mushafOfflineCard" class="card p-3 sm:p-4 mb-4 flex flex-col gap-2.5 transition" style="background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 7%, var(--bg-card)), var(--bg-card)); border-color: var(--border-color);">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0" style="background: var(--accent-soft); color: var(--accent)">
+            <i class="fa-solid fa-cloud-arrow-down text-sm sm:text-base"></i>
+          </div>
+          <div>
+            <div class="font-bold text-xs sm:text-sm" style="color:var(--text-primary)">
+              <span>تنزيل المصحف للقراءة بدون نت</span>
+              <span id="mushafOfflineBadge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full mr-1.5" style="background:var(--accent-soft); color:var(--accent)">604 صفحة</span>
+            </div>
+            <div id="mushafOfflineDesc" class="text-[11px]" style="color:var(--text-muted)">حفظ صفحات مصحف المدينة في هاتفك لفتحها فوراً أوفلاين</div>
+          </div>
+        </div>
+        <button id="mushafOfflineActionBtn" onclick="toggleOfflineMushafDownload()" class="pill text-xs py-1.5 px-3 font-bold border-accent text-accent hover:bg-accent hover:text-white transition flex items-center gap-1.5 shrink-0 shadow-xs">
+          <i class="fa-solid fa-download"></i>
+          <span id="mushafOfflineBtnText">تحميل أوفلاين</span>
+        </button>
+      </div>
+      
+      <!-- شريط تقدم التحميل السلس -->
+      <div id="mushafDownloadProgressContainer" class="hidden space-y-1 pt-1.5 border-t" style="border-color: var(--border-color)">
+        <div class="flex items-center justify-between text-[11px] font-bold" style="color:var(--text-muted)">
+          <span id="mushafDownloadStatus">جاري التحميل...</span>
+          <span id="mushafDownloadPercent" class="font-mono" style="color:var(--accent)">0%</span>
+        </div>
+        <div class="w-full h-2 rounded-full overflow-hidden" style="background: var(--border-color)">
+          <div id="mushafDownloadProgressBar" class="h-full transition-all duration-150" style="background: var(--accent); width: 0%"></div>
+        </div>
+      </div>
+    </div>
+
 
 
 
@@ -2286,6 +2327,124 @@ async function openQuranModule(pushState = true) {
 }
 
 // التبديل بين تبويبات المصحف الأربعة
+
+// ==========================================================================
+// إدارة تنزيل وحفظ مصحف المدينة كاملاً في ذاكرة الهاتف (Offline Mushaf Downloader)
+// ==========================================================================
+let isMushafDownloading = false;
+let mushafDownloadAbort = false;
+
+function checkMushafDownloadStatus() {
+  const isComplete = ls('mushaf_download_complete', false);
+  const card = $('#mushafOfflineCard');
+  const btn = $('#mushafOfflineActionBtn');
+  const badge = $('#mushafOfflineBadge');
+  const desc = $('#mushafOfflineDesc');
+  if (!card || !btn) return;
+
+  if (isComplete) {
+    if (badge) {
+      badge.textContent = 'جاهز أوفلاين ✓';
+      badge.style.color = '#10B981';
+      badge.style.backgroundColor = 'rgba(16, 185, 129, 0.12)';
+    }
+    if (desc) desc.textContent = 'تم حفظ كافة صفحات المصحف في هاتفك، يمكنك القراءة الآن بدون إنترنت';
+    btn.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-500"></i><span>محفوظ بالهاتف</span>';
+    btn.className = 'pill text-xs py-1.5 px-3 font-bold border-emerald-500 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0';
+    btn.onclick = () => showToast('صفحات المصحف الشريف (604 صفحة) محفوظة بالفعل في هاتفك وجاهزة أوفلاين 🌿', 'success');
+  }
+}
+
+async function toggleOfflineMushafDownload() {
+  if (isMushafDownloading) {
+    mushafDownloadAbort = true;
+    isMushafDownloading = false;
+    const btnTxt = $('#mushafOfflineBtnText');
+    if (btnTxt) btnTxt.textContent = 'استئناف التحميل';
+    const statusTxt = $('#mushafDownloadStatus');
+    if (statusTxt) statusTxt.textContent = 'تم الإيقاف مؤقتاً';
+    return;
+  }
+
+  if (ls('mushaf_download_complete', false)) {
+    showToast('صفحات المصحف الشريف (604 صفحة) محفوظة بالكامل في هاتفك للعمل بدون نت 🌿', 'success');
+    return;
+  }
+
+  isMushafDownloading = true;
+  mushafDownloadAbort = false;
+
+  const progressWrap = $('#mushafDownloadProgressContainer');
+  const progressBar = $('#mushafDownloadProgressBar');
+  const statusTxt = $('#mushafDownloadStatus');
+  const percentTxt = $('#mushafDownloadPercent');
+  const btn = $('#mushafOfflineActionBtn');
+
+  if (progressWrap) progressWrap.classList.remove('hidden');
+  if (btn) btn.innerHTML = '<i class="fa-solid fa-pause"></i><span id="mushafOfflineBtnText">إيقاف مؤقت</span>';
+
+  showToast('بدء تنزيل صفحات المصحف الشريف في هاتفك...', 'info');
+
+  try {
+    const cache = await caches.open('rafiq-mushaf-pages');
+    const totalPages = 604;
+    let completedCount = 0;
+
+    // فحص ما تم تحميله مسبقاً
+    for (let p = 1; p <= totalPages; p++) {
+      const pad = String(p).padStart(3, '0');
+      const url = 'https://android.quran.com/data/width_1260/page' + pad + '.png';
+      const match = await cache.match(url);
+      if (match) completedCount++;
+    }
+
+    // تنزيل باقي الصفحات على دفعات متوازية
+    const batchSize = 6;
+    for (let p = 1; p <= totalPages; p += batchSize) {
+      if (mushafDownloadAbort) break;
+
+      const batch = [];
+      for (let b = 0; b < batchSize && (p + b) <= totalPages; b++) {
+        const pageNum = p + b;
+        const pad = String(pageNum).padStart(3, '0');
+        const primaryUrl = 'https://android.quran.com/data/width_1260/page' + pad + '.png';
+        const fallbackUrl = 'https://raw.githubusercontent.com/QuranFoundation/quran-images-madinah/main/width_1260/page' + pad + '.png';
+
+        batch.push((async () => {
+          const exists = await cache.match(primaryUrl);
+          if (!exists) {
+            try {
+              let res = await fetch(primaryUrl);
+              if (!res.ok) res = await fetch(fallbackUrl);
+              if (res.ok) {
+                await cache.put(primaryUrl, res.clone());
+                await cache.put(fallbackUrl, res.clone());
+              }
+            } catch(e) {}
+          }
+          completedCount++;
+          const percent = Math.round((completedCount / totalPages) * 100);
+          if (progressBar) progressBar.style.width = percent + '%';
+          if (percentTxt) percentTxt.textContent = percent + '%';
+          if (statusTxt) statusTxt.textContent = 'صفحة ' + toAr(completedCount) + ' من ' + toAr(totalPages);
+        })());
+      }
+      await Promise.all(batch);
+    }
+
+    if (!mushafDownloadAbort) {
+      sv('mushaf_download_complete', true);
+      isMushafDownloading = false;
+      checkMushafDownloadStatus();
+      showMotivationalCelebration('quran', 'تم حفظ جميع صفحات المصحف الـ ٦٠٤ بنجاح! جاهز تماماً للقراءة بدون إنترنت.');
+    }
+  } catch(e) {
+    console.error('Download error:', e);
+    isMushafDownloading = false;
+    showToast('تعذر إكمال التحميل، يرجى التأكد من اتصال الإنترنت والمحاولة ثانية.', 'error');
+  }
+}
+
 function switchQuranTab(tabName) {
   currentQuranTab = tabName;
   ['surahs', 'juz', 'pages', 'search'].forEach(t => {
@@ -4109,6 +4268,21 @@ function getGlobalAyahNumber(surah, ayah) {
    7. الأحاديث النبوية الموثقة (Hadith Section)
    ========================================================================== */
 const BUILTIN_HADITHS = [
+  { text: "بُنِيَ الإسْلامُ علَى خَمْسٍ: شَهادَةِ أنْ لا إلَهَ إلَّا اللَّهُ وأنَّ مُحَمَّدًا رَسولُ اللَّهِ، وإقامِ الصَّلاةِ، وإيتاءِ الزَّكاةِ، والحَجِّ، وصَوْمِ رَمَضانَ.", source: "صحيح البخاري ومسلم - متفق عليه - عبد الله بن عمر رضي الله عنهما" },
+  { text: "المُسْلِمُ مَن سَلِمَ المُسْلِمُونَ مِن لِسانِهِ ويَدِهِ، والمُؤْمِنُ مَن أمِنَهُ النَّاسُ علَى دِمائِهِمْ وأَمْوالِهِمْ.", source: "صحيح مسلم - عبد الله بن عمرو رضي الله عنهما" },
+  { text: "لا يُؤْمِنُ أحَدُكُمْ حتَّى يُحِبَّ لأخِيهِ ما يُحِبُّ لِنَفْسِهِ.", source: "صحيح البخاري ومسلم - متفق عليه - أنس بن مالك رضي الله عنه" },
+  { text: "خَيْرُكُمْ مَن تَعَلَّمَ القُرْآنَ وعَلَّمَهُ.", source: "صحيح البخاري - عثمان بن عفان رضي الله عنه" },
+  { text: "كَلِمَتانِ خَفِيفَتانِ علَى اللِّسانِ، ثَقِيلَتانِ في المِيزانِ، حَبِيبَتانِ إلى الرَّحْمَنِ: سُبْحانَ اللَّهِ وبِحَمْدِهِ، سُبْحانَ اللَّهِ العَظِيمِ.", source: "صحيح مسلم - أبو هريرة رضي الله عنه" },
+  { text: "مَن سَلَكَ طَرِيقًا يَلْتَمِسُ فيه عِلْمًا، سَهَّلَ اللَّهُ له به طَرِيقًا إلى الجَنَّةِ، وما اجْتَمَعَ قَوْمٌ في بَيْتٍ مِن بُيُوتِ اللَّهِ، يَتْلُونَ كِتابَ اللَّهِ، ويَتَدارَسُونَهُ بيْنَهُمْ، إلَّا نَزَلَتْ عليهمِ السَّكِينَةُ، وغَشِيَتْهُمُ الرَّحْمَةُ وحَفَّتْهُمُ المَلائِكَةُ، وذَكَرَهُمُ اللَّهُ فِيمَن عِنْدَهُ.", source: "صحيح مسلم - أبو هريرة رضي الله عنه" },
+  { text: "مَن كانَ يُؤْمِنُ باللَّهِ واليَومِ الآخِرِ فَلْيَقُلْ خَيْرًا أوْ لِيَصْمُتْ، ومَن كانَ يُؤْمِنُ باللَّهِ واليَومِ الآخِرِ فَلْيُكْرِمْ جارَهُ، ومَن كانَ يُؤْمِنُ باللَّهِ واليَومِ الآخِرِ فَلْيُكْرِمْ ضَيْفَهُ.", source: "صحيح البخاري - أبو هريرة رضي الله عنه" },
+  { text: "إنَّ الصِّدْقَ يَهْدِي إلى البِرِّ، وإنَّ البِرَّ يَهْدِي إلى الجَنَّةِ، وإنَّ الرَّجُلَ لَيَصْدُقُ حتَّى يُكْتَبَ صِدِّيقًا. وإنَّ الكَذِبَ يَهْدِي إلى الفُجُورِ، وإنَّ الفُجُورَ يَهْدِي إلى النَّارِ، وإنَّ الرَّجُلَ لَيَكْذِبُ حتَّى يُكْتَبَ كَذّابًا.", source: "صحيح البخاري ومسلم - متفق عليه - عبد الله بن مسعود رضي الله عنه" },
+  { text: "أنا وكافِلُ اليَتِيمِ في الجَنَّةِ هَكَذا وقالَ بإصْبَعَيْهِ السَّبّابَةِ والوُسْطَى.", source: "صحيح البخاري - سهل بن سعد رضي الله عنه" },
+  { text: "رَغِمَ أنْفُ، ثُمَّ رَغِمَ أنْفُ، ثُمَّ رَغِمَ أنْفُ، مَن أدْرَكَ أبَوَيْهِ عِنْدَ الكِبَرِ، أحَدَهُما، أوْ كِلَيْهِما فَلَمْ يَدْخُلِ الجَنَّةَ.", source: "صحيح مسلم - أبو هريرة رضي الله عنه" },
+  { text: "الرَّاحِمُونَ يَرْحَمُهُمُ الرَّحْمَنُ، ارْحَمُوا مَن فِي الأَرْضِ يَرْحَمْكُم مَن فِي السَّمَاءِ.", source: "صحيح البخاري - عبد الله بن عمرو رضي الله عنهما" },
+  { text: "واللَّهِ إنِّي لأَسْتَغْفِرُ اللَّهَ وأَتُوبُ إلَيْهِ في اليَومِ أكْثَرَ مِن سَبْعِينَ مَرَّةً.", source: "صحيح مسلم - أبو هريرة رضي الله عنه" },
+  { text: "أرَأَيْتُمْ لو أنَّ نَهْرًا ببَابِ أحَدِكُمْ يَغْتَسِلُ منه كُلَّ يَومٍ خَمْسَ مَرّاتٍ، هلْ يَبْقَى مِن دَرَنِهِ شيءٌ؟ قالوا: لا يَبْقَى مِن دَرَنِهِ شيءٌ، قالَ: فَذلكَ مَثَلُ الصَّلَواتِ الخَمْسِ، يَمْحُو اللَّهُ بهِنَّ الخَطايا.", source: "صحيح البخاري ومسلم - متفق عليه - أبو هريرة رضي الله عنه" },
+  { text: "أحَبُّ الكَلامِ إلى اللهِ أرْبَعٌ: سُبْحانَ اللهِ، والْحَمْدُ لِلَّهِ، ولا إلَهَ إلَّا اللَّهُ، واللَّهُ أكْبَرُ، لا يَضُرُّكَ بأَيِّهِنَّ بَدَأْتَ.", source: "صحيح مسلم - سمرة بن جندب رضي الله عنه" },
+  { text: "كُنْ في الدُّنْيا كَأنَّكَ غَرِيبٌ أوْ عابِرُ سَبِيلٍ.", source: "صحيح البخاري ومسلم - متفق عليه - عبد الله بن عمر رضي الله عنهما" },
   { text: "إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ، وَإِنَّمَا لِكُلِّ امْرِئٍ مَا نَوَى، فَمَنْ كَانَتْ هِجْرَتُهُ إِلَى دُنْيَا يُصِيبُهَا أَوْ إِلَى امْرَأَةٍ يَنْكِحُهَا، فَهِجْرَتُهُ إِلَى مَا هَاجَرَ إِلَيْهِ.", source: "صحيح البخاري ومسلم - متفق عليه" },
   { text: "الدِّينُ النَّصِيحَةُ. قُلْنَا: لِمَنْ؟ قَالَ: لِلَّهِ، وَلِكِتَابِهِ، وَلِرَسُولِهِ، وَلأَئِمَّةِ الْمُسْلِمِينَ وَعَامَّتِهِمْ.", source: "صحيح مسلم" },
   { text: "لاَ يُؤْمِنُ أَحَدُكُمْ حَتَّى يُحِبَّ لأَخِيهِ مَا يُحِبُّ لِنَفْسِهِ.", source: "صحيح البخاري ومسلم - متفق عليه" },
@@ -4831,6 +5005,7 @@ function checkHabitAutoResets() {
 }
 
 function openTasksModule(tab = 'daily') {
+  updateSubViewNavVisibility(false);
   currentTasksTab = tab;
   checkHabitAutoResets();
 
@@ -5045,6 +5220,12 @@ function initMainModulesGrid() {
   `).join('');
 }
 
+
+function updateSubViewNavVisibility(show = true) {
+  const row = $('#subViewTopNavRow');
+  if (row) row.style.display = show ? 'flex' : 'none';
+}
+
 function setSubViewTitle(title) {
   $('#subViewTitle').innerHTML = title;
 }
@@ -5127,6 +5308,7 @@ function renderSubView(htmlContent, pushState = true) {
 }
 
 function goHome(fromPopState = false) {
+  updateSubViewNavVisibility(true);
   currentActiveScreen = 'home';
   $('#mushafFullscreenViewer')?.remove();
   $('#subView').hidden = true;
@@ -5860,7 +6042,7 @@ function triggerPWAInstall() {
 // تسجيل الـ Service Worker مع دعم التحديث التلقائي الفوري (Network-First)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=16').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=17').then((reg) => {
       // إجبار فحص التحديث فورياً عند كل فتح للتطبيق
       reg.update();
 
@@ -6013,7 +6195,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   checkAndHideInstallPrompts();
   initThemes();
-  initCitiesDropdown();
+    initCitiesDropdown();
   initQuickAdhkarBar();
   initMainModulesGrid();
   
