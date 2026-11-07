@@ -284,7 +284,7 @@ body {
 }
 </style>
 </head>
-<body class="selection:bg-rose-500 selection:text-white" style="padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); padding-top: env(safe-area-inset-top, 0px);">
+<body class="selection:bg-rose-500 selection:text-white overflow-x-hidden max-w-full" style="padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); padding-top: env(safe-area-inset-top, 0px);">
 
 <!-- رأس الصفحة والملاحة العلوية -->
 <header class="sticky top-0 z-40 backdrop-blur-md bg-opacity-80 border-b" style="background-color: color-mix(in srgb, var(--bg-card) 85%, transparent); border-color: var(--border-color);">
@@ -1528,40 +1528,37 @@ function openAdhkarCategory(catId, isNewVisit = true, pushState = true) {
   const percent = currentCategoryAdhkar.length ? (finishedCount / currentCategoryAdhkar.length) * 100 : 0;
 
   const html = `
-    <!-- شريط أدوات الورد والتحكم بالخط والتصفير -->
-    <div class="card p-4 mb-4 space-y-3 sticky top-16 z-30 backdrop-blur-md bg-opacity-95 shadow-sm">
-      <div class="flex flex-wrap items-center justify-between gap-2.5">
+    <!-- شريط أدوات الورد والتحكم بالخط والتصفير المتناسق -->
+    <div class="card p-3 sm:p-4 mb-4 space-y-2.5 sticky top-16 z-30 backdrop-blur-md bg-opacity-95 shadow-sm max-w-full overflow-hidden">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
         <div class="flex items-center gap-2">
-          <button onclick="handleAppBackButton()" class="pill text-xs py-1.5 px-3 font-bold border-accent text-accent hover:bg-accent hover:text-white transition flex items-center gap-1.5" title="الرجوع لقائمة أقسام الأذكار">
-            <i class="fa-solid fa-arrow-right"></i>
+          <button onclick="handleAppBackButton()" class="pill text-xs py-1.5 px-3 font-bold border-accent text-accent hover:bg-accent hover:text-white transition flex items-center gap-1.5 shrink-0" title="الرجوع لقائمة أقسام الأذكار">
+            <i class="fa-solid fa-arrow-right text-[11px]"></i>
             <span>فهرس الأذكار</span>
           </button>
-          <button onclick="resetCurrentAdhkarCategory()" class="pill text-xs py-1.5 px-3 border-rose-400 text-rose-600 dark:text-rose-400 font-bold" title="إعادة بدء عداد هذا الورد من البداية">
-            <i class="fa-solid fa-rotate-right ml-1"></i> تصفير وإعادة الورد
-          </button>
-          <button onclick="toggleAdhkarSound()" id="adhkarSoundToggleBtn" class="pill text-xs py-1.5 px-3">
-            <i class="fa-solid ${adhkarSoundEnabled ? 'fa-volume-high' : 'fa-volume-xmark'} ml-1"></i> ${adhkarSoundEnabled ? 'الصوت: مفعل' : 'صامت'}
+          <button onclick="resetCurrentAdhkarCategory()" class="pill text-xs py-1.5 px-2.5 border-rose-400 text-rose-600 dark:text-rose-400 font-bold shrink-0 transition hover:bg-rose-500/10" title="إعادة بدء عداد هذا الورد">
+            <i class="fa-solid fa-rotate-right ml-1"></i> تصفير الورد
           </button>
         </div>
 
-        <div class="flex items-center gap-2">
-          <span class="text-xs" style="color:var(--text-muted)">حجم الخط:</span>
-          <button onclick="changeAdhkarFontSize(-2)" class="pill text-xs py-1 px-2.5 font-bold">A-</button>
-          <button onclick="changeAdhkarFontSize(2)" class="pill text-xs py-1 px-2.5 font-bold">A+</button>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span class="text-xs font-medium" style="color:var(--text-muted)">الخط:</span>
+          <button onclick="changeAdhkarFontSize(-2)" class="pill text-xs py-1 px-2 font-bold" title="تصغير حجم الخط">A-</button>
+          <button onclick="changeAdhkarFontSize(2)" class="pill text-xs py-1 px-2 font-bold" title="تكبير حجم الخط">A+</button>
         </div>
       </div>
 
       <!-- مؤشر الإنجاز والنسبة -->
-      <div class="flex items-center justify-between gap-3 pt-2 border-t text-xs font-bold" style="border-color:var(--border-color)">
-        <div class="flex items-center gap-2">
+      <div class="flex items-center justify-between gap-2 pt-2 border-t text-xs font-bold" style="border-color:var(--border-color)">
+        <div class="flex items-center gap-1.5 truncate">
           <span>المنجز:</span>
-          <span id="adhkarCompletedCount" class="text-sm font-mono" style="color:var(--accent)">${toAr(finishedCount)}</span>
-          <span style="color:var(--text-muted)">من أصل ${toAr(currentCategoryAdhkar.length)} ذكراً</span>
+          <span id="adhkarCompletedCount" class="text-sm font-mono font-black" style="color:var(--accent)">${toAr(finishedCount)}</span>
+          <span style="color:var(--text-muted)">من ${toAr(currentCategoryAdhkar.length)} ذكراً</span>
         </div>
-        <span id="adhkarPercentBadge" class="font-mono">${toAr(Math.round(percent))}%</span>
+        <span id="adhkarPercentBadge" class="font-mono text-xs px-2 py-0.5 rounded-full font-bold" style="background:var(--accent-soft); color:var(--accent)">${toAr(Math.round(percent))}%</span>
       </div>
-      <div class="w-full h-2.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-        <div id="adhkarCategoryProgressBar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width:${percent}%"></div>
+      <div class="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+        <div id="adhkarCategoryProgressBar" class="h-full bg-accent transition-all duration-300" style="width:${percent}%"></div>
       </div>
     </div>
 
@@ -2445,6 +2442,200 @@ async function toggleOfflineMushafDownload() {
   }
 }
 
+
+// صفحات بداية الأحزاب الـ 60 الدقيقة وفق مصحف المدينة المنورة
+const QURAN_HIZB_PAGES = [
+  1, 11, 22, 32, 42, 51, 62, 72, 82, 92,
+  102, 112, 121, 132, 142, 151, 162, 173, 182, 192,
+  201, 212, 222, 231, 242, 252, 262, 272, 282, 292,
+  302, 312, 322, 332, 342, 352, 362, 372, 382, 392,
+  402, 413, 422, 431, 442, 451, 462, 472, 482, 492,
+  502, 513, 522, 531, 542, 553, 562, 572, 582, 592
+];
+
+let activeQuickNavTab = 'pages';
+
+// فتح نافذة الانتقال السريع للمصحف (كما في التصميم المطلوب)
+function openMushafQuickNavModal(tab = 'pages') {
+  activeQuickNavTab = tab;
+  let modal = document.getElementById('mushafQuickNavModal');
+  if (modal) modal.remove();
+
+  modal = document.createElement('div');
+  modal.id = 'mushafQuickNavModal';
+  modal.className = 'fixed inset-0 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fadeIn';
+  modal.style.zIndex = '350';
+  modal.onclick = (e) => { if (e.target === modal) closeMushafQuickNavModal(); };
+
+  modal.innerHTML = `
+    <div class="card w-full max-w-xl max-h-[90vh] sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slideUp relative" 
+         style="background-color: var(--bg-card); border-color: var(--border-color); color: var(--text-primary);" 
+         dir="rtl" onclick="event.stopPropagation()">
+      
+      <!-- رأس النافذة: العنوان وزر الإغلاق -->
+      <div class="flex items-center justify-between p-4 border-b shrink-0" style="border-color: var(--border-color)">
+        <h3 class="font-black text-base sm:text-lg flex items-center gap-2" style="color: var(--text-primary)">
+          <i class="fa-solid fa-compass text-accent"></i>
+          <span>الانتقال السريع</span>
+        </h3>
+        <button onclick="closeMushafQuickNavModal()" class="w-8 h-8 rounded-full pill !p-0 flex items-center justify-center hover:opacity-80 transition" title="إغلاق">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <!-- التبويبات الثلاثة الرئيسية: السور، الأجزاء، الصفحات -->
+      <div class="p-3 border-b shrink-0" style="border-color: var(--border-color)">
+        <div class="flex items-center gap-1.5 p-1 rounded-2xl border" style="background: color-mix(in srgb, var(--bg-card) 90%, var(--text-primary) 5%); border-color: var(--border-color)">
+          <button id="quickTab_surahs" onclick="switchQuickNavTab('surahs')" class="flex-1 py-2 px-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-list-ol"></i>
+            <span>السور</span>
+          </button>
+          <button id="quickTab_juz" onclick="switchQuickNavTab('juz')" class="flex-1 py-2 px-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-layer-group"></i>
+            <span>الأجزاء</span>
+          </button>
+          <button id="quickTab_pages" onclick="switchQuickNavTab('pages')" class="flex-1 py-2 px-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1">
+            <i class="fa-solid fa-book-open"></i>
+            <span>الصفحات</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- شريط إدخال رقم الصفحة المباشر والانتقال الفوري -->
+      <div class="px-4 py-3 border-b flex items-center gap-2 shrink-0" style="border-color: var(--border-color); background: color-mix(in srgb, var(--accent) 4%, var(--bg-card))">
+        <input id="quickNavPageInput" type="number" min="1" max="604" 
+               placeholder="رقم الصفحة (١ - ٦٠٤) • الحالية ${toAr(currentReadingPage || 1)}" 
+               class="inp flex-1 text-center font-bold text-xs sm:text-sm py-2 !rounded-xl" 
+               onkeydown="if(event.key === 'Enter') submitQuickNavPageJump()" />
+        <button onclick="submitQuickNavPageJump()" class="pill !py-2 !px-4 text-xs sm:text-sm font-bold transition active:scale-95 shrink-0" 
+                style="background: var(--accent); color: #fff; border-color: var(--accent)">
+          انتقال
+        </button>
+      </div>
+
+      <!-- حاوية المحتوى وشبكة البطاقات الثلاثية -->
+      <div id="quickNavTabBody" class="flex-1 overflow-y-auto p-3 sm:p-4 scrollbar-thin">
+        <!-- يتم البناء ديناميكياً هنا -->
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  switchQuickNavTab(activeQuickNavTab);
+}
+
+function closeMushafQuickNavModal() {
+  const modal = document.getElementById('mushafQuickNavModal');
+  if (modal) modal.remove();
+}
+
+function switchQuickNavTab(tab) {
+  activeQuickNavTab = tab;
+  ['surahs', 'juz', 'pages'].forEach(t => {
+    const btn = document.getElementById('quickTab_' + t);
+    if (btn) {
+      if (t === tab) {
+        btn.style.backgroundColor = 'var(--bg-card)';
+        btn.style.color = 'var(--accent)';
+        btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)';
+      } else {
+        btn.style.backgroundColor = 'transparent';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.boxShadow = 'none';
+      }
+    }
+  });
+
+  const body = document.getElementById('quickNavTabBody');
+  if (!body) return;
+
+  if (tab === 'pages') {
+    // شبكة الأحزاب الـ 60 بنظام الـ 3 أعمدة المطابق للصورة 100%
+    body.innerHTML = `
+      <div class="grid grid-cols-3 gap-2 sm:gap-2.5">
+        ${QURAN_HIZB_PAGES.map((page, idx) => {
+          const hizbNum = idx + 1;
+          const juzNum = Math.floor(idx / 2) + 1;
+          const isCurrent = currentReadingPage && currentReadingPage >= page && (idx === 59 || currentReadingPage < QURAN_HIZB_PAGES[idx + 1]);
+          return `
+            <button onclick="jumpFromQuickNav(${page})" 
+                    class="p-2 sm:p-2.5 rounded-2xl border text-center transition hover:border-accent active:scale-95 flex flex-col items-center justify-center gap-0.5 shadow-xs select-none ${isCurrent ? 'ring-2 ring-accent border-accent font-black' : ''}" 
+                    style="background:var(--bg-card); border-color:var(--border-color)">
+              <div class="font-bold text-xs sm:text-sm" style="color:var(--text-primary)">
+                الحزب ${toAr(hizbNum)}
+              </div>
+              <div class="text-[10px] sm:text-[11px] font-medium" style="color:var(--text-muted)">
+                ج ${toAr(String(juzNum).padStart(2, '0'))} ص ${toAr(page)}
+              </div>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } else if (tab === 'juz') {
+    // شبكة الأجزاء الـ 30 بنظام الـ 3 أعمدة
+    body.innerHTML = `
+      <div class="grid grid-cols-3 gap-2 sm:gap-2.5">
+        ${QURAN_JUZ_DATA.map((j) => {
+          const isCurrent = currentReadingPage && getJuzForPage(currentReadingPage) === j.juz;
+          return `
+            <button onclick="jumpFromQuickNav(${j.page})" 
+                    class="p-2 sm:p-2.5 rounded-2xl border text-center transition hover:border-accent active:scale-95 flex flex-col items-center justify-center gap-0.5 shadow-xs select-none ${isCurrent ? 'ring-2 ring-accent border-accent font-black' : ''}" 
+                    style="background:var(--bg-card); border-color:var(--border-color)">
+              <div class="font-bold text-xs sm:text-sm" style="color:var(--text-primary)">
+                الجزء ${toAr(j.juz)}
+              </div>
+              <div class="text-[10px] sm:text-[11px] truncate max-w-full font-medium" style="color:var(--text-muted)">
+                ${j.name} • ص ${toAr(j.page)}
+              </div>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } else if (tab === 'surahs') {
+    // شبكة السور الـ 114 بنظام الـ 3 أعمدة
+    const currentSurah = currentReadingPage ? getSurahNumberForPage(currentReadingPage) : 1;
+    body.innerHTML = `
+      <div class="grid grid-cols-3 gap-2 sm:gap-2.5">
+        ${SURAH_NAMES_AR.map((name, idx) => {
+          const num = idx + 1;
+          const page = SURAH_START_PAGES[idx];
+          const isCurrent = num === currentSurah;
+          return `
+            <button onclick="jumpFromQuickNav(${page})" 
+                    class="p-2 sm:p-2.5 rounded-2xl border text-center transition hover:border-accent active:scale-95 flex flex-col items-center justify-center gap-0.5 shadow-xs select-none ${isCurrent ? 'ring-2 ring-accent border-accent font-black' : ''}" 
+                    style="background:var(--bg-card); border-color:var(--border-color)">
+              <div class="font-bold text-xs truncate max-w-full" style="color:var(--text-primary)">
+                ${toAr(num)}. ${name}
+              </div>
+              <div class="text-[10px] font-medium" style="color:var(--text-muted)">
+                صـ ${toAr(page)}
+              </div>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+}
+
+function submitQuickNavPageJump() {
+  const input = document.getElementById('quickNavPageInput');
+  if (!input) return;
+  let val = parseInt(input.value);
+  if (isNaN(val) || val < 1 || val > 604) {
+    showToast('يرجى كتابة رقم صفحة صحيح بين 1 و 604', 'warn');
+    return;
+  }
+  jumpFromQuickNav(val);
+}
+
+function jumpFromQuickNav(pageNum) {
+  closeMushafQuickNavModal();
+  readQuranPage(pageNum);
+}
+
 function switchQuranTab(tabName) {
   currentQuranTab = tabName;
   ['surahs', 'juz', 'pages', 'search'].forEach(t => {
@@ -2801,22 +2992,22 @@ async function readQuranPage(pageNum, pushState = true) {
     <div id="mushafTopBar" class="w-full flex items-center justify-between px-2 sm:px-4 py-2 z-30 backdrop-blur-md transition-all duration-300" style="background-color: color-mix(in srgb, var(--bg-card) 94%, transparent); border-bottom: 1px solid var(--border-color); padding-top: max(0.5rem, env(safe-area-inset-top, 0px));">
       
       <!-- اليمين: زر سايدبار السور وزر سايدبار الأجزاء -->
-      <div class="flex items-center gap-1.5 sm:gap-2">
-        <button onclick="toggleMushafSurahsSidebar(true)" class="btn-accent !py-1.5 !px-3 text-xs font-bold flex items-center gap-1.5 shadow-xs transition active:scale-95" title="فهرس السور الـ 114">
-          <i class="fa-solid fa-list-ul"></i>
+      <div class="flex items-center gap-1 sm:gap-1.5">
+        <button onclick="openMushafQuickNavModal('surahs')" class="btn-accent !py-1.5 !px-2.5 sm:!px-3 text-xs font-bold flex items-center gap-1 shadow-xs transition active:scale-95" title="الانتقال السريع للسور">
+          <i class="fa-solid fa-list-ol"></i>
           <span>السور</span>
         </button>
-        <button onclick="toggleMushafJuzSidebar(true)" class="pill !py-1.5 !px-2.5 text-xs font-bold flex items-center gap-1 hover:border-accent transition" title="فهرس الأجزاء الـ 30">
+        <button onclick="openMushafQuickNavModal('juz')" class="pill !py-1.5 !px-2 sm:!px-2.5 text-xs font-bold flex items-center gap-1 hover:border-accent transition" title="الانتقال السريع للأجزاء">
           <i class="fa-solid fa-layer-group text-accent"></i>
           <span>جزء ${toAr(juzNum)}</span>
-          <i class="fa-solid fa-angle-down text-[10px] opacity-70"></i>
         </button>
       </div>
 
-      <!-- المنتصف: عنوان السورة ورقم الصفحة -->
-      <div class="text-center px-1">
-        <div class="text-xs sm:text-sm font-black leading-tight" style="color:var(--text-primary)">
-          سورة ${surahName}
+      <!-- المنتصف: عنوان السورة ورقم الصفحة مع النقر للانتقال السريع -->
+      <div onclick="openMushafQuickNavModal('pages')" class="text-center px-1.5 py-0.5 rounded-xl transition hover:bg-accent/5 active:scale-95 cursor-pointer select-none" title="انقر لفتح نافذة الانتقال السريع">
+        <div class="text-xs sm:text-sm font-black leading-tight flex items-center justify-center gap-1" style="color:var(--text-primary)">
+          <span>سورة ${surahName}</span>
+          <i class="fa-solid fa-chevron-down text-[9px] text-accent opacity-75"></i>
         </div>
         <div class="text-[11px] font-bold" style="color:var(--accent)">
           صـ ${toAr(pageNum)} من ٦٠٤
@@ -5238,6 +5429,7 @@ let currentActiveScreen = 'home'; // 'home' | 'adhkarHub' | 'adhkarCategory' | '
 let lastBackPressTime = 0;
 
 function handleAppBackButton() {
+  const qNav = document.getElementById("mushafQuickNavModal"); if (qNav) { qNav.remove(); return; }
   // 1. إغلاق شريط خيارات الآية إن وُجد
   const ayahStrip = document.getElementById('floatingAyahActionStrip');
   if (ayahStrip) {
@@ -5331,6 +5523,7 @@ function goHome(fromPopState = false) {
 // الاستماع لزر الرجوع الفعلي بالهاتف أو إيماءة السحب (Android Back Button / Gesture)
 window.addEventListener('popstate', (e) => {
   isHandlingPopState = true;
+  const qNav = document.getElementById('mushafQuickNavModal'); if (qNav) { qNav.remove(); isHandlingPopState = false; return; }
 
   // 1. إغلاق شريط خيارات الآية المنبثق إن وُجد
   const ayahStrip = document.getElementById('floatingAyahActionStrip');
@@ -6042,7 +6235,7 @@ function triggerPWAInstall() {
 // تسجيل الـ Service Worker مع دعم التحديث التلقائي الفوري (Network-First)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=17').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=18').then((reg) => {
       // إجبار فحص التحديث فورياً عند كل فتح للتطبيق
       reg.update();
 
