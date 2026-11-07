@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rafiq-almuslim-v18';
+const CACHE_NAME = 'rafiq-almuslim-v19';
 const MUSHAF_CACHE_NAME = 'rafiq-mushaf-pages';
 const API_CACHE_NAME = 'rafiq-api-cache';
 

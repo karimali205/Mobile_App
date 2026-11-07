@@ -6235,7 +6235,7 @@ function triggerPWAInstall() {
 // تسجيل الـ Service Worker مع دعم التحديث التلقائي الفوري (Network-First)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=18').then((reg) => {
+    navigator.serviceWorker.register('./sw.js?v=19').then((reg) => {
       // إجبار فحص التحديث فورياً عند كل فتح للتطبيق
       reg.update();
 
